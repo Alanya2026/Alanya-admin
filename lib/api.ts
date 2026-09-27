@@ -55,7 +55,8 @@ function forceLogout() {
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_refresh');
   localStorage.removeItem('admin_user');
-  window.location.href = '/login';
+  // basePath /admin : un hard redirect doit inclure le préfixe.
+  window.location.href = '/admin/login';
 }
 
 api.interceptors.response.use(
@@ -87,8 +88,19 @@ api.interceptors.response.use(
       }
     }
 
-    // 401 non récupérable (pas de refresh, refresh échoué, token invalide)
-    if (status === 401 && typeof window !== 'undefined') {
+    // 401 non récupérable (pas de refresh, refresh échoué, token invalide).
+    // Ne pas déconnecter sur l'écran de login : un mauvais mot de passe renvoie
+    // aussi 401 (INVALID_CREDENTIALS) et doit laisser afficher l'erreur.
+    const url = original?.url ?? '';
+    const isAdminLogin = url.includes('/admin/auth/login');
+    const hadSession = !!localStorage.getItem('admin_token');
+    if (
+      status === 401 &&
+      typeof window !== 'undefined' &&
+      hadSession &&
+      !isAdminLogin &&
+      code !== 'INVALID_CREDENTIALS'
+    ) {
       forceLogout();
     }
     return Promise.reject(err);

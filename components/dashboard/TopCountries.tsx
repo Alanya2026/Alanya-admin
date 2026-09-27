@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCountries } from "@/hooks/useCountries";
 
 interface Country {
   pays: string;
@@ -32,6 +33,12 @@ function getFlag(pays: string): string {
 export function TopCountries({ data }: TopCountriesProps) {
   const max = Math.max(...data.map((c) => c.users));
   const router = useRouter();
+  const { data: countries } = useCountries();
+
+  function handleCountryClick(pays: string) {
+    const id = countries?.find((c) => c.libelle === pays)?.idPays;
+    router.push(id != null ? `/users?idPays=${id}` : "/users");
+  }
 
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-zinc-900">
@@ -42,7 +49,7 @@ export function TopCountries({ data }: TopCountriesProps) {
         {data.map((country) => (
           <div
             key={country.pays}
-            onClick={() => router.push(`/users?pays=${encodeURIComponent(country.pays)}`)}
+            onClick={() => handleCountryClick(country.pays)}
             className="flex items-center gap-3 px-2 -mx-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
           >
             <span className="text-lg shrink-0 w-7">{getFlag(country.pays)}</span>

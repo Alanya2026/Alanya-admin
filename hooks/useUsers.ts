@@ -8,12 +8,14 @@ import {
   deleteUser,
   createUser,
   updateUserPhone,
+  fetchUserPhoneHistory,
   fetchReservedAlanyaPhones,
   addReservedAlanyaPhone,
   removeReservedAlanyaPhone,
   checkAssignablePhone,
 } from '@/lib/mock-data';
 import type { CreateUserPayload, ReservedAlanyaPhonesParams, SetUserSoclePayload } from '@/types';
+import type { UsersApiParams } from '@/lib/api-params';
 
 interface UsersParams {
   search?: string;
@@ -22,8 +24,11 @@ interface UsersParams {
   limit?: number;
   idPays?: string;
   accountType?: string;
-  sort?: string;
-  order?: string;
+  typeCompte?: string;
+  from?: string;
+  to?: string;
+  sort?: UsersApiParams['sort'];
+  order?: UsersApiParams['order'];
 }
 
 export function useUsers(params: UsersParams) {
@@ -65,7 +70,9 @@ export function useSetUserSocle() {
       setUserSocle(id, payload),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
-      qc.invalidateQueries({ queryKey: ['admin-user', id] });
+      // La fiche est chargée sous 'admin-user-detail' (useUserDetail.ts) :
+      // invalider 'admin-user' laissait la fiche ouverte sur l'ancien socle.
+      qc.invalidateQueries({ queryKey: ['admin-user-detail', id] });
       // Une révocation change le compte officiel : le composeur de diffusion
       // et son état vide en dépendent.
       qc.invalidateQueries({ queryKey: ['admin-official-account'] });
@@ -97,7 +104,16 @@ export function useUpdateUserPhone() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
       qc.invalidateQueries({ queryKey: ['admin-user-detail', id] });
+      qc.invalidateQueries({ queryKey: ['admin-user-phone-history', id] });
     },
+  });
+}
+
+export function useUserPhoneHistory(userId: number) {
+  return useQuery({
+    queryKey: ['admin-user-phone-history', userId],
+    queryFn: () => fetchUserPhoneHistory(userId),
+    enabled: Number.isInteger(userId) && userId > 0,
   });
 }
 

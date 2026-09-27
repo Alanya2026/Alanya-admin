@@ -18,10 +18,12 @@ import {
   UserCircle,
   HandHeart,
   Eraser,
+  HeartPulse,
   ScrollText,
   KeyRound,
   DatabaseBackup,
   Flag,
+  CreditCard,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -42,6 +44,10 @@ const navItemsAll = [
   { href: "/analytics", label: "Analytics", icon: BarChart3, permission: "stats.read" },
   { href: "/trips", label: "Trajets", icon: Route, permission: "trips.read" },
   { href: "/users", label: "Utilisateurs", icon: Users, permission: "users.read" },
+  // Lecture au niveau admin ; les réglages et les plans exigent billing.settings
+  // et billing.plans, vérifiés par la page et par le serveur.
+  { href: "/billing", label: "Abonnement", icon: CreditCard, permission: "billing.read" },
+  // Vérifications : pages conservées hors menu (comptes business plus tard).
   { href: "/groups", label: "Groupes", icon: UsersRound, permission: "groups.read" },
   { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
   { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
@@ -63,6 +69,11 @@ const navItemsAll = [
   // `stats.read` — c'est une vue d'ensemble du parc, pas un pouvoir de plus.
   { href: "/backups", label: "Sauvegardes", icon: DatabaseBackup, permission: "stats.read" },
   { href: "/backup-keys", label: "Clés de sauvegarde", icon: KeyRound, permission: "audit.read" },
+  // Sur `stats.read` plutôt qu'une permission dédiée : créer une permission
+  // aurait imposé une migration et une reconfiguration de tous les rôles pour
+  // une page en lecture seule, qui n'expose que des compteurs et des messages
+  // d'erreur techniques — rien qu'un lecteur de statistiques ne puisse voir.
+  { href: "/sante", label: "Santé du service", icon: HeartPulse, permission: "stats.read" },
   { href: "/settings", label: "Paramètres", icon: Settings, permission: "settings.read" },
   { href: "/profile", label: "Mon profil", icon: UserCircle, permission: "profile.read" },
 ];
@@ -71,6 +82,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { can } = usePermissions();
+  // Avant tout retour anticipé : les hooks s'appellent dans le même ordre à
+  // chaque rendu.
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -132,8 +145,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 )}
               >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                <span className="relative shrink-0">
+                  <item.icon className="h-5 w-5" />
+                </span>
+                {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
               </button>
             );
           })}

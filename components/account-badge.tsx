@@ -1,25 +1,46 @@
 import { BadgeCheck, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  OFFICIAL_SEAL_GOLD,
+  VERIFIED_INDIGO,
+  resolveAccountBadge,
+  sealPath,
+} from "@/lib/account-badge";
 
-/** Miroir de `kOfficialSealGold` — account_badge.dart */
-export const OFFICIAL_SEAL_GOLD = "#c9a227";
+// Réexportés : les écrans importent la logique depuis le composant.
+export {
+  OFFICIAL_SEAL_GOLD,
+  VERIFIED_INDIGO,
+  resolveAccountBadge,
+  isOfficialAlanyaAccount,
+  sealPath,
+} from "@/lib/account-badge";
+export type { AccountBadgeKind } from "@/lib/account-badge";
 
-export type AccountBadgeKind = "none" | "panierDeclare" | "panierVerifie" | "officiel";
+const SEAL_PATH = sealPath();
 
-/** Miroir de `resolveAccountBadge` — account_badge.dart */
-export function resolveAccountBadge(
-  accountType: number,
-  verificationStatus: number,
-): AccountBadgeKind {
-  if (accountType === 2) return "officiel";
-  if (accountType === 1) {
-    return verificationStatus === 2 ? "panierVerifie" : "panierDeclare";
-  }
-  return "none";
-}
-
-export function isOfficialAlanyaAccount(user: { accountType?: number }) {
-  return user.accountType === 2;
+function VerifiedSeal({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      role="img"
+      aria-label="Compte vérifié"
+      className={cn("shrink-0", className)}
+    >
+      <path d={SEAL_PATH} fill={VERIFIED_INDIGO} />
+      <path
+        d="M6.6 12.4 10.1 15.9 17.6 8.2"
+        transform="translate(12 12) scale(0.86) translate(-12 -12)"
+        fill="none"
+        stroke="#fff"
+        strokeWidth={2.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 interface AccountBadgeIconProps {
@@ -41,6 +62,10 @@ export function AccountBadgeIcon({
 }: AccountBadgeIconProps) {
   const badge = resolveAccountBadge(accountType, verificationStatus);
   if (badge === "none") return null;
+
+  if (badge === "cocheVerifiee") {
+    return <VerifiedSeal size={size} className={className} />;
+  }
 
   if (badge === "officiel") {
     return (

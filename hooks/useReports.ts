@@ -19,6 +19,22 @@ export function useReports(params: ReportsParams = {}) {
   });
 }
 
+/**
+ * La tête de la file ouverte, servie au dashboard.
+ *
+ * Même famille de clé que la file complète : une décision prise sur l'écran
+ * dédié invalide le widget, et l'inverse. Le serveur renvoie aussi `open`,
+ * le décompte total — plus fiable que `items.length`, plafonné au `limit`.
+ */
+export function useOpenReports(limit = 4) {
+  return useQuery({
+    queryKey: ['admin-reports', { state: 'open', page: 1, limit }],
+    queryFn: () => fetchReports({ state: 'open', page: 1, limit }),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useReportActions(id: number | null) {
   return useQuery({
     queryKey: ['admin-report-actions', id],

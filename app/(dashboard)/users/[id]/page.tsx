@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserDetail, useUserActivity, useUserLogins } from "@/hooks/useUserDetail";
 import { useAudit } from "@/hooks/useAudit";
-import { useBanUser, useUnbanUser, useSetUserRole, useSetUserSocle, useDeleteUser, useUpdateUserPhone } from "@/hooks/useUsers";
-import { formatDisplay, formatLiveInput, normalize, validate } from "@/lib/alanya-phone";
+import { useBanUser, useUnbanUser, useSetUserRole, useSetUserSocle, useDeleteUser, useUpdateUserPhone, useCheckAssignablePhone } from "@/hooks/useUsers";
+import { formatDisplay, formatLiveInput, isCompletePhone, normalize, validate } from "@/lib/alanya-phone";
 import { AccountBadgeLabel, isOfficialAlanyaAccount } from "@/components/account-badge";
+import { SubscriptionCard } from "@/components/billing/SubscriptionCard";
+import { PhoneHistoryCard } from "@/components/users/PhoneHistoryCard";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +25,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast";
 import { ArrowLeft, MessageSquare, Phone, Users, Smile, Calendar, Globe, Smartphone, Monitor, Clock, Shield, Mail, Ban as BanIcon, CheckCircle2, Shield as ShieldUp, ShieldOff, Trash2, Loader2, X, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-
-const roleLabels: Record<number, string> = { 0: "Utilisateur", 1: "Admin", 2: "Super Admin" };
-const accountTypeLabels: Record<number, string> = { 0: "Personnel", 1: "Business", 2: "Officiel" };
-const verificationLabels: Record<number, string> = {
-  0: "Aucune", 1: "En attente", 2: "Vérifié", 3: "Refusé", 4: "Révoqué", 5: "Expiré",
-};
+import {
+  ROLE_LABELS as roleLabels,
+  ACCOUNT_TYPE_LABELS as accountTypeLabels,
+  VERIFICATION_LABELS as verificationLabels,
+} from "@/lib/account-labels";
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -52,10 +53,17 @@ export default function UserDetailPage() {
   const phoneMutation = useUpdateUserPhone();
   const socleMutation = useSetUserSocle();
 
+  // Vérifié pendant la saisie : un numéro qu'un utilisateur est en train
+  // d'acheter est refusé, un numéro en quarantaine passe avec un avertissement.
+  const newPhoneCanonical = normalize(newPhone);
+  const { data: newPhoneCheck, isFetching: newPhoneChecking } = useCheckAssignablePhone(
+    newPhoneCanonical,
+    showPhoneChange && can("phones.read") && isCompletePhone(newPhoneCanonical),
+  );
+
   // `null` = « non touché » : la valeur affichée reste celle du serveur tant que
   // l'administrateur n'a rien changé, sans effet de bord de synchronisation.
   const [socleType, setSocleType] = useState<number | null>(null);
-  const [socleVerif, setSocleVerif] = useState<number | null>(null);
 
   function refreshDetail() {
     queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
@@ -263,18 +271,16 @@ export default function UserDetailPage() {
 
           {can("users.socle") && (() => {
             const currentType = socleType ?? user.accountType ?? 0;
-            const currentVerif = socleVerif ?? user.verificationStatus ?? 0;
             const isAdminAccount = (user.typeCompte ?? 0) >= 1;
-            const dirty = socleType !== null || socleVerif !== null;
+            const dirty = socleType !== null;
 
             async function saveSocle() {
               try {
                 await socleMutation.mutateAsync({
                   id: user!.alanyaID,
-                  payload: { account_type: currentType, verification_status: currentVerif },
+                  payload: { account_type: currentType },
                 });
                 setSocleType(null);
-                setSocleVerif(null);
                 refreshDetail();
                 addToast({ title: "Socle mis à jour" });
               } catch (err: unknown) {
@@ -319,20 +325,19 @@ export default function UserDetailPage() {
                     )}
                   </div>
 
+                  {/* La coche suit l'abonnement (comptes personnels) ; révocation
+                      depuis la carte Abonnement ci-contre.
+                      Elle ne se saisit pas ici, et pas seulement par choix
+                      d'interface : le serveur refuse le champ
+                      (FIELD_IMMUTABLE). */}
                   <div className="space-y-1">
-                    <label htmlFor="socle-verif" className="text-xs font-medium text-zinc-500">
-                      État de vérification
-                    </label>
-                    <select
-                      id="socle-verif"
-                      className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                      value={currentVerif}
-                      onChange={(e) => setSocleVerif(Number(e.target.value))}
-                    >
-                      {Object.entries(verificationLabels).map(([v, label]) => (
-                        <option key={v} value={v}>{label}</option>
-                      ))}
-                    </select>
+                    <p className="text-xs font-medium text-zinc-500">Coche</p>
+                    <p className="text-sm">
+                      {verificationLabels[user.verificationStatus ?? 0]}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Suit l&apos;abonnement Alanya Plus. Gérer depuis la carte Abonnement.
+                    </p>
                   </div>
 
                   {isAdminAccount && (
@@ -359,6 +364,16 @@ export default function UserDetailPage() {
               </Card>
             );
           })()}
+
+          {can("billing.read") && (
+            <SubscriptionCard
+              userId={id}
+              userName={user.nom || user.pseudo}
+              verified={(user.verificationStatus ?? 0) === 2}
+            />
+          )}
+
+          <PhoneHistoryCard userId={id} />
         </div>
 
         {/* Activity + Logins */}
@@ -392,7 +407,7 @@ export default function UserDetailPage() {
               ) : (
                 <div className="space-y-3">
                   {logins?.map((login) => (
-                    <div key={login.idAccess} className="flex items-center gap-4 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900">
+                    <div key={login.idLogin} className="flex items-center gap-4 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-950 shrink-0">
                         {isMobile(login.os_system, login.device)
                           ? <Smartphone className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -401,7 +416,16 @@ export default function UserDetailPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{login.device}</p>
-                        <p className="text-xs text-zinc-500">{login.os_system}</p>
+                        <p className="text-xs text-zinc-500">
+                          {login.os_system}
+                          {login.origine && login.origine !== "login" && (
+                            <span className={login.origine === "refus"
+                              ? "ml-2 text-red-600 dark:text-red-400 font-medium"
+                              : "ml-2 text-zinc-400"}>
+                              {ORIGINE_LABELS[login.origine]}
+                            </span>
+                          )}
+                        </p>
                       </div>
                       <div className="text-right text-xs text-zinc-500 shrink-0">
                         <p>{new Date(login.dateLogin).toLocaleDateString("fr")}</p>
@@ -536,6 +560,22 @@ export default function UserDetailPage() {
             onChange={(e) => setNewPhone(formatLiveInput(e.target.value))}
             placeholder="00 00 00 00"
           />
+          {newPhoneCheck && !newPhoneChecking && newPhoneCheck.phoneCanonical === newPhoneCanonical && (
+            <p
+              className={cn(
+                "text-xs",
+                !newPhoneCheck.assignable
+                  ? "text-red-500"
+                  : newPhoneCheck.quarantineUntil
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-indigo-600 dark:text-indigo-400",
+              )}
+            >
+              {newPhoneCheck.assignable
+                ? newPhoneCheck.hint || "Numéro disponible"
+                : newPhoneCheck.reason || "Numéro indisponible"}
+            </p>
+          )}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">Annuler</Button></DialogClose>
             <Button
@@ -590,6 +630,15 @@ function Row({ icon: Icon, label }: { icon: React.ComponentType<React.SVGProps<S
     </div>
   );
 }
+
+/** Ce qui a produit la ligne de journal. `login` reste muet : c'est le cas
+    ordinaire, l'afficher partout noierait les quatre autres. */
+const ORIGINE_LABELS: Record<string, string> = {
+  inscription: "inscription",
+  qr: "par QR",
+  recovery: "après réinitialisation",
+  refus: "tentative refusée",
+};
 
 function StatBox({ icon: Icon, label, value, color }: { icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; label: string; value: number; color: string }) {
   return (

@@ -11,6 +11,7 @@ export function useAdminProfile() {
       const res = await api.get("/admin/me");
       return res.data as AdminProfile;
     },
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -6,22 +6,33 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SettingsPageSkeleton } from "@/components/skeletons";
 import { useToast } from "@/components/ui/toast";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import { useSecuritySettings, useUpdateSecuritySettings } from "@/hooks/useSecurity";
 import { usePermissions } from "@/hooks/usePermissions";
-import { Save, Globe, Bell, Shield, Palette, Loader2, Lock } from "lucide-react";
+import { Save, Globe, Bell, Shield, Palette, Loader2, Lock, Smartphone, Clock } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { data: settings, isLoading } = useSettings();
   const updateMutation = useUpdateSettings();
+  const {
+    data: security,
+    isLoading: securityLoading,
+    isError: securityError,
+  } = useSecuritySettings();
+  const updateSecurity = useUpdateSecuritySettings();
   const { addToast } = useToast();
   const { can } = usePermissions();
   const isSuper = can("settings.write");
 
   const [appName, setAppName] = useState("");
   const [apiUrl, setApiUrl] = useState("");
+  const [confirmDeviceBinding, setConfirmDeviceBinding] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -31,6 +42,7 @@ export default function SettingsPage() {
   }, [settings]);
 
   const maintenance = settings?.maintenance ?? false;
+  const deviceBinding = security?.deviceBindingEnabled ?? false;
   const dirty = !!settings && (appName !== settings.appName || apiUrl !== settings.apiUrl);
 
   function handleSave() {
@@ -53,6 +65,27 @@ export default function SettingsPage() {
         onError: () => addToast({ title: "Échec", description: "Action réservée au super-admin", variant: "error" }),
       }
     );
+  }
+
+  function applyDeviceBinding(next: boolean) {
+    updateSecurity.mutate(next, {
+      onSuccess: () => addToast({
+        title: next ? "Connexion limitée aux téléphones connus" : "Restriction levée",
+        description: "Effet sous 30 secondes.",
+        variant: "success",
+      }),
+      onError: () => addToast({ title: "Échec", description: "Action réservée au super-admin", variant: "error" }),
+      onSettled: () => setConfirmDeviceBinding(false),
+    });
+  }
+
+  /**
+   * Restreindre peut empêcher des utilisateurs de se connecter : on confirme.
+   * Lever la restriction les débloque — aucune raison de ralentir ce geste.
+   */
+  function toggleDeviceBinding(next: boolean) {
+    if (next) setConfirmDeviceBinding(true);
+    else applyDeviceBinding(false);
   }
 
   return (
@@ -153,6 +186,51 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-indigo-600" />
+              <CardTitle className="text-base">Sécurité</CardTitle>
+            </div>
+            <CardDescription>Connexion depuis un nouveau téléphone</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  N&apos;autoriser la connexion par mot de passe que depuis les téléphones déjà connus
+                </p>
+                <p className="text-sm text-zinc-500">
+                  Un téléphone inconnu doit d&apos;abord être ajouté en scannant le QR code depuis un
+                  appareil déjà connecté. Un compte qui n&apos;a plus aucun appareil actif n&apos;est
+                  jamais bloqué.
+                </p>
+              </div>
+              {securityLoading ? (
+                <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+              ) : (
+                <Switch
+                  checked={deviceBinding}
+                  disabled={!isSuper || securityError || updateSecurity.isPending}
+                  onCheckedChange={toggleDeviceBinding}
+                  aria-label="N'autoriser la connexion par mot de passe que depuis les téléphones déjà connus"
+                  className="mt-0.5 shrink-0"
+                />
+              )}
+            </div>
+            {securityError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Réglage indisponible : l&apos;état n&apos;a pas pu être chargé.
+              </p>
+            ) : (
+              <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                Une bascule met jusqu&apos;à 30 secondes à se propager aux serveurs.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {isSuper && (
           <Card className="border-0 shadow-sm">
             <CardHeader>
@@ -168,6 +246,16 @@ export default function SettingsPage() {
         )}
       </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeviceBinding}
+        onOpenChange={setConfirmDeviceBinding}
+        title="Limiter la connexion aux téléphones connus ?"
+        description="Les utilisateurs dont le téléphone n'est pas encore enregistré ne pourront plus se connecter avec leur mot de passe : il leur faudra scanner le QR code depuis un appareil déjà connecté, ou passer par « Mot de passe oublié » si le téléphone est perdu ou cassé. Comptez jusqu'à 30 secondes avant que la restriction s'applique partout."
+        confirmLabel="Activer la restriction"
+        pending={updateSecurity.isPending}
+        onConfirm={() => applyDeviceBinding(true)}
+      />
     </div>
   );
 }

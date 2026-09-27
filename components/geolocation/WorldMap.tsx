@@ -35,10 +35,22 @@ export default function WorldMap({ countries, maxCount, countryRecord }: WorldMa
       .catch(console.error);
   }, []);
 
-  const darkTiles = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png";
-  const lightTiles = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
-  const attribution =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const osmTiles = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const osmAttribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+  const [useMapbox, setUseMapbox] = useState(Boolean(mapboxToken));
+
+  const darkTiles = useMapbox
+    ? `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`
+    : osmTiles;
+  const lightTiles = useMapbox
+    ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`
+    : osmTiles;
+  const attribution = useMapbox
+    ? '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    : osmAttribution;
 
   const geoJsonStyle = useMemo(
     () => ({
@@ -63,10 +75,11 @@ export default function WorldMap({ countries, maxCount, countryRecord }: WorldMa
         worldCopyJump={true}
       >
         <TileLayer
-          key={isDark ? "dark" : "light"}
+          key={`${useMapbox ? "mapbox" : "osm"}-${isDark ? "dark" : "light"}`}
           url={isDark ? darkTiles : lightTiles}
           attribution={attribution}
           subdomains="abcd"
+          eventHandlers={{ tileerror: () => setUseMapbox(false) }}
         />
 
         {geoJsonData && (

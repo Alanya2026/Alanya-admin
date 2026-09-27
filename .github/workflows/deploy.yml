@@ -15,8 +15,18 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            # Toute erreur arrête le déploiement et le fait échouer. Sans ça,
+            # un `git pull` refusé laissait le script compiler l'ancien code,
+            # redémarrer, et GitHub affichait « success » : le panneau est
+            # resté figé des semaines ainsi.
+            set -e
             cd /var/www/alanya-admin
-            git pull origin main
+            # Le serveur ne porte aucune modification à conserver : il se
+            # réaligne sur main, comme le backend. Un `git pull` abandonnait
+            # dès qu'un fichier suivi (package-lock.json, réécrit par un
+            # `npm install` lancé à la main) différait du dépôt.
+            git fetch origin main
+            git reset --hard origin/main
             npm ci
             # Pas de NEXT_PUBLIC_API_URL ici : une variable posée en ligne de
             # commande prime sur .env.production dans Next.js. Cette ligne

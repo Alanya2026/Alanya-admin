@@ -44,9 +44,10 @@ export function AnalyticsContentSkeleton() {
       <SectionTitleSkeleton />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <PieChartSkeleton ariaLabel="Chargement répartition par rôle" />
-        <PieChartSkeleton ariaLabel="Chargement systèmes" />
-        <StatCardGridSkeleton count={4} className="grid-cols-2 content-start" />
+        <PieChartSkeleton ariaLabel="Chargement connexions par système" />
+        <PieChartSkeleton ariaLabel="Chargement parc d'appareils" />
       </div>
+      <StatCardGridSkeleton count={4} />
     </div>
   );
 }

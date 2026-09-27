@@ -1,4 +1,5 @@
 import { User, UsersResponse, UserDetail, UserActivity, LoginEntry } from '@/types';
+import { UsersApiParams } from '@/lib/api-params';
 
 const baseUserFields = {
   accountType: 0 as const,
@@ -79,16 +80,11 @@ export const mockUserActivity: UserActivity = {
 };
 
 export const mockLoginHistory: LoginEntry[] = [
-  { idAccess: 1, dateLogin: new Date().toISOString(), os_system: 'Android', device: 'Samsung SM-A715F', ipAdress: '192.168.1.1' },
-  { idAccess: 2, dateLogin: '2026-05-20T10:00:00Z', os_system: 'iOS', device: 'iPhone 14', ipAdress: '10.0.0.5' },
+  { idLogin: 1, dateLogin: new Date().toISOString(), os_system: 'Android', device: 'Samsung SM-A715F', ipAdress: '192.168.1.1', origine: 'login' },
+  { idLogin: 2, dateLogin: '2026-05-20T10:00:00Z', os_system: 'iOS', device: 'iPhone 14', ipAdress: '10.0.0.5', origine: 'qr' },
 ];
 
-export function mockUsersResponse(params: {
-  search?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-}): UsersResponse {
+export function mockUsersResponse(params: UsersApiParams): UsersResponse {
   let items = [...mockUsers];
   const s = params.search?.toLowerCase();
   if (s) {
@@ -97,6 +93,25 @@ export function mockUsersResponse(params: {
   if (params.status === 'online') items = items.filter(u => u.isOnline);
   if (params.status === 'banned') items = items.filter(u => u.exclus);
   if (params.status === 'admin') items = items.filter(u => u.typeCompte >= 1);
+  if (params.idPays) items = items.filter(u => String(u.idPays) === params.idPays);
+  if (params.accountType) items = items.filter(u => String(u.accountType ?? 0) === params.accountType);
+  if (params.typeCompte) items = items.filter(u => String(u.typeCompte) === params.typeCompte);
+  // Plage de date : miroir du backend (bornes sur createdAt, inclusives).
+  const fromMs = params.from ? Date.parse(params.from) : NaN;
+  const toMs = params.to ? Date.parse(params.to) : NaN;
+  const ts = (u: import('@/types').User) => (u.createdAt ? new Date(u.createdAt).getTime() : 0);
+  if (!isNaN(fromMs)) items = items.filter((u) => ts(u) >= fromMs);
+  if (!isNaN(toMs)) items = items.filter((u) => ts(u) <= toMs);
+  if (params.sort) {
+    const dir = params.order === 'asc' ? 1 : -1;
+    items.sort((a, b) => {
+      if (params.sort === 'nom') return dir * (a.nom || '').localeCompare(b.nom || '');
+      const key = params.sort === 'last_seen' ? 'lastSeen' : 'createdAt';
+      const av = a[key] ? new Date(a[key]!).getTime() : 0;
+      const bv = b[key] ? new Date(b[key]!).getTime() : 0;
+      return dir * (av - bv);
+    });
+  }
   const page = params.page ?? 1;
   const limit = params.limit ?? 20;
   const start = (page - 1) * limit;

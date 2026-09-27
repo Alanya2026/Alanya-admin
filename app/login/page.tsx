@@ -34,8 +34,17 @@ export default function LoginPage() {
       await adminLogin(email, password);
       router.push("/dashboard");
     } catch (err: unknown) {
+      const status =
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object" &&
+        "status" in err.response
+          ? (err.response as { status?: number }).status
+          : undefined;
       setError(
-        err && typeof err === "object" && "response" in err
+        status === 401
           ? "Email ou mot de passe incorrect"
           : "Erreur de connexion"
       );

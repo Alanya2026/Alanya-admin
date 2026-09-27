@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { UsersTableRowsSkeleton } from "@/components/skeletons";
+import { ErrorState } from "@/components/ui/error-state";
 import { useAudit, useAuditActions } from "@/hooks/useAudit";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ export default function AuditPage() {
   const [action, setAction] = useState("");
   const [limit, setLimit] = useState(PAGE);
 
-  const { data: entries, isLoading, isFetching, refetch } = useAudit({
+  const { data: entries, isLoading, isFetching, isError, refetch } = useAudit({
     action: action || undefined,
     limit,
   });
@@ -136,7 +137,13 @@ export default function AuditPage() {
               <TableBody>
                 {isLoading && <UsersTableRowsSkeleton count={6} />}
 
-                {!isLoading && rows.length === 0 && (
+                {!isLoading && !isFetching && isError && (
+                  <TableRow>
+                    <TableCell colSpan={6}><ErrorState onRetry={() => refetch()} /></TableCell>
+                  </TableRow>
+                )}
+
+                {!isLoading && !isFetching && !isError && rows.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-12 text-center text-sm text-zinc-500">
                       Aucune action enregistrée{action ? " pour ce filtre" : ""}.

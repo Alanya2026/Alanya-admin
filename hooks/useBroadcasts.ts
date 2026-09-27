@@ -89,7 +89,7 @@ export function useVilles(idPays: number | null, search = '') {
     queryKey: ['admin-villes', idPays, search],
     queryFn: () => fetchVilles(idPays!, search),
     enabled: idPays != null && idPays > 0,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

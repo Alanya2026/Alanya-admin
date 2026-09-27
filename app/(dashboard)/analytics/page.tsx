@@ -28,6 +28,7 @@ import {
   RefreshCw,
   Radio,
   Download,
+  Voicemail,
 } from "lucide-react";
 
 function formatDuration(s: number): string {
@@ -120,6 +121,8 @@ export default function AnalyticsPage() {
             { name: "Répondus", value: data.calls.answered },
             { name: "Manqués", value: data.calls.missed },
             { name: "Rejetés", value: data.calls.rejected },
+            { name: "Répondeur (sans sonner)", value: data.calls.voicemail },
+            { name: "Répondeur (après sonnerie)", value: data.calls.voicemailAfterRing },
           ]
         : [],
     [data]
@@ -147,13 +150,16 @@ export default function AnalyticsPage() {
     () => (data ? data.devices.map((d) => ({ name: d.os, value: d.count })) : []),
     [data]
   );
+  const parcPie = useMemo(
+    () => (data ? data.activeDevices.map((d) => ({ name: d.os, value: d.count })) : []),
+    [data]
+  );
   const meetingPie = useMemo(
     () =>
       data
         ? [
-            { name: "Acceptés", value: data.meetings.accepted },
-            { name: "Refusés", value: data.meetings.declined },
-            { name: "Sans réponse", value: data.meetings.invited },
+            { name: "Ont rejoint", value: data.meetings.joined },
+            { name: "Jamais rejoint", value: data.meetings.invitedNeverJoined },
           ]
         : [],
     [data]
@@ -229,6 +235,7 @@ export default function AnalyticsPage() {
             <StatCard title="Taux de réussite" value={`${data.calls.successRate}%`} icon={CheckCircle2} color="#22c55e" subtitle={`${data.calls.answered.toLocaleString()} répondus`} />
             <StatCard title="Durée moyenne" value={formatDuration(data.calls.avgDuration)} icon={Clock} color="#8b5cf6" subtitle="par appel répondu" />
             <StatCard title="Appels manqués" value={data.calls.missed} icon={Phone} color="#ef4444" subtitle="non répondus" />
+            <StatCard title="Renvoyés au répondeur" value={data.calls.voicemail + data.calls.voicemailAfterRing} icon={Voicemail} color="#0ea5e9" subtitle={`dont ${data.calls.voicemailAfterRing.toLocaleString()} après sonnerie`} />
             <StatCard title="Durée totale" value={formatDuration(data.calls.totalDuration)} icon={Clock} color="#6366f1" subtitle="cumulée" />
             <StatCard
               title="Taux TURN"
@@ -271,19 +278,28 @@ export default function AnalyticsPage() {
             <StatCard title="Réunions" value={data.meetings.total} icon={Video} color="#6366f1" subtitle={`${data.meetings.ended.toLocaleString()} terminées`} />
             <StatCard title="Durée réelle moyenne" value={formatDuration(data.meetings.avgRealDuration)} icon={Clock} color="#8b5cf6" subtitle={`${formatMinutes(data.meetings.avgPlannedMinutes)} planifiées`} />
             <StatCard title="Taux de présence" value={`${data.meetings.attendanceRate}%`} icon={CheckCircle2} color="#22c55e" subtitle={`${data.meetings.attendees.toLocaleString()} présents sur ${data.meetings.participants.toLocaleString()}`} />
-            <StatCard title="No-show" value={`${data.meetings.noShowRate}%`} icon={UsersRound} color="#ef4444" subtitle={`${data.meetings.noShow.toLocaleString()} acceptés jamais venus`} />
+            <StatCard title="Taux de participation" value={`${data.meetings.joinRate}%`} icon={UsersRound} color="#ef4444" subtitle={`${data.meetings.invitedNeverJoined.toLocaleString()} invités jamais venus`} />
           </div>
 
           <SectionTitle>Utilisateurs &amp; conversations</SectionTitle>
+          {/*
+            Deux camemberts d'appareils, et ce n'est pas un doublon :
+            « Connexions » compte des authentifications sur la période — un
+            utilisateur fidèle n'y apparaît qu'une fois, puisque l'application
+            renouvelle son jeton au lieu de se reconnecter. « Parc » compte les
+            appareils qui se sont manifestés. C'est le second qui dit combien de
+            monde utilise Alanya.
+          */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <PieChart data={rolePie} title="Répartition par rôle" />
-            <PieChart data={devicePie} title="Systèmes (connexions)" />
-            <div className="grid grid-cols-2 gap-4 content-start">
-              <StatCard title="Conversations" value={data.conversations.total} icon={MessageSquare} color="#3b82f6" subtitle="total" />
-              <StatCard title="Groupes" value={data.conversations.groups} icon={UsersRound} color="#f59e0b" subtitle="actifs" />
-              <StatCard title="Privées (1-1)" value={data.conversations.oneToOne} icon={Users} color="#6366f1" subtitle="total" />
-              <StatCard title="Taille moy. groupe" value={data.conversations.avgGroupSize} icon={UsersRound} color="#22c55e" subtitle="membres" />
-            </div>
+            <PieChart data={devicePie} title="Connexions par système" />
+            <PieChart data={parcPie} title="Parc d'appareils actifs" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard title="Conversations" value={data.conversations.total} icon={MessageSquare} color="#3b82f6" subtitle="total" />
+            <StatCard title="Groupes" value={data.conversations.groups} icon={UsersRound} color="#f59e0b" subtitle="actifs" />
+            <StatCard title="Privées (1-1)" value={data.conversations.oneToOne} icon={Users} color="#6366f1" subtitle="total" />
+            <StatCard title="Taille moy. groupe" value={data.conversations.avgGroupSize} icon={UsersRound} color="#22c55e" subtitle="membres" />
           </div>
         </>
       )}

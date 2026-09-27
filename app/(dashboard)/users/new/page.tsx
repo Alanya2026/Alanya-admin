@@ -399,9 +399,11 @@ export default function NewUserPage() {
                   {manualCheck && !manualCheckFetching && (
                     <p
                       className={`text-xs mt-1 ${
-                        manualCheck.assignable
-                          ? "text-indigo-600 dark:text-indigo-400"
-                          : "text-red-500"
+                        !manualCheck.assignable
+                          ? "text-red-500"
+                          : manualCheck.quarantineUntil
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-indigo-600 dark:text-indigo-400"
                       }`}
                     >
                       {manualCheck.assignable

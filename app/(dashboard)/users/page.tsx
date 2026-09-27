@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUsers, useBanUser, useUnbanUser, useSetUserRole, useDeleteUser } from "@/hooks/useUsers";
+import { useCountries } from "@/hooks/useCountries";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useQueryStates } from "@/hooks/useQueryState";
+import { ErrorState } from "@/components/ui/error-state";
+import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu";
 import { formatDisplay } from "@/lib/alanya-phone";
+import { periodToRange, normalizeApiDateRange } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { AccountBadgeLabel, isOfficialAlanyaAccount } from "@/components/account-badge";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -19,6 +25,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
   SlidersHorizontal,
   Ban,
   CheckCircle2,
@@ -34,11 +43,11 @@ import {
 } from "lucide-react";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import type { AdminExportParams } from "@/lib/admin-export";
+import type { UsersApiParams } from "@/lib/api-params";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { ROLE_LABELS as roleLabels, ACCOUNT_TYPE_LABELS as accountTypeLabels } from "@/lib/account-labels";
 
-const roleLabels: Record<number, string> = { 0: "User", 1: "Admin", 2: "Super Admin" };
 const roleColors: Record<number, string> = { 0: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300", 1: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300", 2: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" };
-const accountTypeLabels: Record<number, string> = { 0: "Personnel", 1: "Business", 2: "Officiel" };
 const accountTypeColors: Record<number, string> = {
   0: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
   1: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
@@ -52,25 +61,65 @@ const statusOptions = [
   { value: "admin", label: "Admins" },
 ];
 
+const roleOptions = [
+  { value: "", label: "Tous" },
+  { value: "0", label: "User" },
+  { value: "1", label: "Admin" },
+  { value: "2", label: "Super Admin" },
+];
+
 export default function UsersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addToast } = useToast();
   const { can } = usePermissions();
-  const [search, setSearch] = useState(searchParams.get("q") || "");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  // Filtres vivant dans l'URL : vues partageables, retour navigateur fonctionnel.
+  const [filters, setFilters] = useQueryStates({
+    q: "",
+    status: "",
+    idPays: "",
+    accountType: "",
+    typeCompte: "",
+    period: "",
+    from: "",
+    to: "",
+    sort: "created_at",
+    order: "desc",
+    page: "1",
+  });
+  const { q, status, idPays, accountType, typeCompte, period, from: dateFrom, to: dateTo, sort, order } = filters;
+  const page = Math.max(1, Number(filters.page) || 1);
+  const [searchInput, setSearchInput] = useState(searchParams.get("q") || "");
+  const search = useDebouncedValue(searchInput, 300);
   const [showFilters, setShowFilters] = useState(false);
-  const [idPays, setIdPays] = useState("");
-  const [accountType, setAccountType] = useState("");
-  const [period, setPeriod] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sort, setSort] = useState("created_at");
-  const [order, setOrder] = useState("desc");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const { data, isLoading, isFetching } = useUsers({ search, status, page, limit: 20, idPays, accountType, sort, order });
+  // Plage de date effective : les dates explicites priment sur la présélection
+  // Période. Vide → le serveur n'applique aucun filtre de date.
+  const effectiveRange = useMemo(() => {
+    if (dateFrom || dateTo) {
+      return normalizeApiDateRange(dateFrom, dateTo);
+    }
+    if (period) {
+      return normalizeApiDateRange(periodToRange(period).from, periodToRange(period).to);
+    }
+    return null;
+  }, [period, dateFrom, dateTo]);
+
+  const { data, isLoading, isFetching, isError, refetch } = useUsers({
+    search,
+    status,
+    page,
+    limit: 20,
+    idPays,
+    accountType,
+    typeCompte,
+    sort: sort as UsersApiParams['sort'],
+    order: order as UsersApiParams['order'],
+    from: effectiveRange?.from,
+    to: effectiveRange?.to,
+  });
+  const { data: countries = [] } = useCountries();
   const banMutation = useBanUser();
   const unbanMutation = useUnbanUser();
   const roleMutation = useSetUserRole();
@@ -87,17 +136,32 @@ export default function UsersPage() {
     status: status || undefined,
     idPays: idPays || undefined,
     account_type: accountType || undefined,
-    from: dateFrom || undefined,
-    to: dateTo || undefined,
+    type_compte: typeCompte || undefined,
+    from: effectiveRange?.from.split("T")[0] || undefined,
+    to: effectiveRange?.to.split("T")[0] || undefined,
     sort,
     order,
   };
 
-  function handleSearch(val: string) {
-    setSearch(val);
-    setPage(1);
+  // La recherche tapée pilote l'URL (débattue), qui pilote la requête.
+  useEffect(() => {
+    if (search !== q) {
+      setFilters({ q: search || undefined, page: undefined });
+      setSelected(new Set());
+    }
+    // q n'est qu'un miroir de l'URL ; setFilters est stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const setPage = useCallback((next: number) => {
+    setFilters({ page: next > 1 ? String(next) : undefined });
     setSelected(new Set());
-  }
+  }, [setFilters]);
+
+  const toggleSort = useCallback((key: string) => {
+    if (sort === key) setFilters({ order: order === "asc" ? "desc" : "asc" });
+    else setFilters({ sort: key, order: "desc" });
+  }, [sort, order, setFilters]);
 
   const toggleSelect = useCallback((id: number) => {
     setSelected((prev) => {
@@ -154,7 +218,7 @@ export default function UsersPage() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-        <Input placeholder="Rechercher par nom, pseudo ou téléphone..." value={search} onChange={(e) => handleSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Rechercher par nom, pseudo ou téléphone..." value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="pl-9" />
       </div>
 
       {/* Filters */}
@@ -163,7 +227,7 @@ export default function UsersPage() {
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800">
             <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Filtres</span>
             <button
-              onClick={() => { setStatus(""); setIdPays(""); setAccountType(""); setPeriod(""); setDateFrom(""); setDateTo(""); setSort("created_at"); setOrder("desc"); setPage(1); }}
+              onClick={() => { setFilters({ status: undefined, idPays: undefined, accountType: undefined, typeCompte: undefined, period: undefined, from: undefined, to: undefined, sort: undefined, order: undefined, page: undefined }); setSearchInput(""); setSelected(new Set()); }}
               className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition-colors"
             >
               Réinitialiser
@@ -172,24 +236,28 @@ export default function UsersPage() {
           <div className="flex flex-wrap gap-4 p-4">
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Statut</label>
-              <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={status} onChange={(e) => { setFilters({ status: e.target.value, page: undefined }); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Pays</label>
-              <select value={idPays} onChange={(e) => { setIdPays(e.target.value); setPage(1); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={idPays} onChange={(e) => { setFilters({ idPays: e.target.value, page: undefined }); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <option value="">Tous</option>
-                <option value="1">France</option>
-                <option value="2">Côte d&apos;Ivoire</option>
-                <option value="3">Cameroun</option>
-                <option value="4">Sénégal</option>
-                <option value="5">Maroc</option>
+                {countries.map((c) => (
+                  <option key={c.idPays} value={String(c.idPays)}>{c.libelle}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5 min-w-[140px]">
+              <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Rôle</label>
+              <select value={typeCompte} onChange={(e) => { setFilters({ typeCompte: e.target.value, page: undefined }); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                {roleOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Type de compte</label>
-              <select value={accountType} onChange={(e) => { setAccountType(e.target.value); setPage(1); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={accountType} onChange={(e) => { setFilters({ accountType: e.target.value, page: undefined }); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <option value="">Tous</option>
                 <option value="0">Personnel</option>
                 <option value="1">Business</option>
@@ -198,7 +266,7 @@ export default function UsersPage() {
             </div>
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Période</label>
-              <select value={period} onChange={(e) => { setPeriod(e.target.value); setPage(1); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={period} onChange={(e) => { setFilters({ period: e.target.value, page: undefined }); }} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <option value="">Toutes</option>
                 <option value="7d">7 jours</option>
                 <option value="30d">30 jours</option>
@@ -208,11 +276,11 @@ export default function UsersPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Dates</label>
-              <DateRangeInputs from={dateFrom} to={dateTo} onFromChange={(v) => { setDateFrom(v); setPage(1); }} onToChange={(v) => { setDateTo(v); setPage(1); }} />
+              <DateRangeInputs from={dateFrom} to={dateTo} onFromChange={(v) => setFilters({ from: v, page: undefined })} onToChange={(v) => setFilters({ to: v, page: undefined })} />
             </div>
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Trier par</label>
-              <select value={sort} onChange={(e) => setSort(e.target.value)} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={sort} onChange={(e) => setFilters({ sort: e.target.value })} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <option value="created_at">Date d&apos;inscription</option>
                 <option value="nom">Nom</option>
                 <option value="last_seen">Dernière activité</option>
@@ -220,7 +288,7 @@ export default function UsersPage() {
             </div>
             <div className="space-y-1.5 min-w-[140px]">
               <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Ordre</label>
-              <select value={order} onChange={(e) => setOrder(e.target.value)} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+              <select value={order} onChange={(e) => setFilters({ order: e.target.value })} className="flex h-9 w-full items-center rounded-lg border border-input bg-card px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                 <option value="desc">Décroissant</option>
                 <option value="asc">Croissant</option>
               </select>
@@ -230,20 +298,28 @@ export default function UsersPage() {
       )}
 
       {/* Active Filter Badges */}
-      {(status || idPays || accountType || period || sort !== "created_at" || order !== "desc") && !showFilters && (
+      {(status || idPays || accountType || typeCompte || period || sort !== "created_at" || order !== "desc") && !showFilters && (
         <div className="flex flex-wrap items-center gap-2">
           {status && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
               {statusOptions.find(o => o.value === status)?.label}
-              <button onClick={() => { setStatus(""); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              <button onClick={() => { setFilters({ status: undefined, page: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
           )}
           {idPays && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
-              {idPays === "1" ? "France" : idPays === "2" ? "Côte d'Ivoire" : idPays === "3" ? "Cameroun" : idPays === "4" ? "Sénégal" : idPays === "5" ? "Maroc" : idPays}
-              <button onClick={() => { setIdPays(""); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              {countries.find((c) => String(c.idPays) === idPays)?.libelle ?? idPays}
+              <button onClick={() => { setFilters({ idPays: undefined, page: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+          {typeCompte && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
+              Rôle: {roleLabels[Number(typeCompte)] || typeCompte}
+              <button onClick={() => { setFilters({ typeCompte: undefined, page: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -251,7 +327,7 @@ export default function UsersPage() {
           {accountType && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
               {accountTypeLabels[Number(accountType)] || accountType}
-              <button onClick={() => { setAccountType(""); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              <button onClick={() => { setFilters({ accountType: undefined, page: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -259,7 +335,7 @@ export default function UsersPage() {
           {period && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
               Période: {period === "7d" ? "7 jours" : period === "30d" ? "30 jours" : period === "90d" ? "90 jours" : "12 mois"}
-              <button onClick={() => { setPeriod(""); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              <button onClick={() => { setFilters({ period: undefined, page: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -267,7 +343,7 @@ export default function UsersPage() {
           {sort !== "created_at" && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
               Tri: {sort === "nom" ? "Nom" : "Activité"}
-              <button onClick={() => { setSort("created_at"); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              <button onClick={() => { setFilters({ sort: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -275,7 +351,7 @@ export default function UsersPage() {
           {order !== "desc" && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
               Croissant
-              <button onClick={() => { setOrder("desc"); setPage(1); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+              <button onClick={() => { setFilters({ order: undefined }); }} className="hover:text-indigo-900 dark:hover:text-indigo-100">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -310,14 +386,18 @@ export default function UsersPage() {
                   <input type="checkbox" checked={data ? selected.size === data.items.length && data.items.length > 0 : false} onChange={toggleAll} className="rounded border-zinc-300 dark:border-zinc-600 accent-indigo-600" />
                 </th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">ID</th>
-                <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Nom</th>
+                <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
+                  <SortHeader label="Nom" k="nom" sort={sort} order={order} onToggle={toggleSort} />
+                </th>
                 <th className="w-12 px-3 py-3"></th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Email</th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Téléphone</th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Rôle</th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Compte</th>
                 <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Statut</th>
-                <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Inscrit le</th>
+                <th className="text-left px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">
+                  <SortHeader label="Inscrit le" k="created_at" sort={sort} order={order} onToggle={toggleSort} />
+                </th>
                 <th className="text-right px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -326,6 +406,8 @@ export default function UsersPage() {
                 <UsersTableRowsSkeleton count={8} />
               ) : isFetching ? (
                 <UsersTableRowsSkeleton count={6} />
+              ) : isError ? (
+                <tr><td colSpan={11}><ErrorState onRetry={() => refetch()} /></td></tr>
               ) : (
                 data?.items.map((user) => {
                 const official = isOfficialAlanyaAccount(user);
@@ -407,7 +489,7 @@ export default function UsersPage() {
               );
               })
               )}
-              {!isLoading && !isFetching && data?.items.length === 0 && (
+              {!isLoading && !isFetching && !isError && data?.items.length === 0 && (
                 <tr><td colSpan={11} className="px-4 py-16 text-center">
                   <div className="text-zinc-300 dark:text-zinc-700 mb-2">
                     <Search className="h-10 w-10 mx-auto" />
@@ -428,10 +510,10 @@ export default function UsersPage() {
             Page {data.page} sur {Math.ceil(data.total / data.limit)} ({data.total} résultats)
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => { setPage(p => p - 1); setSelected(new Set()); }}>
+            <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= Math.ceil(data.total / data.limit) || isFetching} onClick={() => { setPage(p => p + 1); setSelected(new Set()); }}>
+            <Button variant="outline" size="sm" disabled={page >= Math.ceil(data.total / data.limit) || isFetching} onClick={() => setPage(page + 1)}>
               Suivant <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -537,51 +619,69 @@ function ActionsMenu({ user, can, onView, onBan, onUnban, onRoleUp, onRoleDown, 
   onRoleDown: () => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen(!open)}>
+    <MenuRoot>
+      <MenuTrigger aria-label="Actions utilisateur">
         <MoreHorizontal className="h-4 w-4" />
-      </Button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 w-48 overflow-hidden rounded-xl border border-zinc-200/80 bg-white py-1 text-sm text-zinc-800 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.35)] animate-in fade-in zoom-in-95 duration-150 dark:border-zinc-700/80 dark:bg-zinc-900 dark:text-zinc-100 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)]">
-            <button onClick={() => { onView(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left">
-              <Eye className="h-4 w-4" /> Détails
-            </button>
-            {user.exclus
-              ? can("users.unban") && (
-                  <button onClick={() => { onUnban(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4" /> Débannir
-                  </button>
-                )
-              : can("users.ban") && (
-                  <button onClick={() => { onBan(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left text-red-600 dark:text-red-400">
-                    <Ban className="h-4 w-4" /> Bannir
-                  </button>
-                )}
-            {can("users.role") && user.typeCompte < 2 && (
-              <button onClick={() => { onRoleUp(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left">
-                <Shield className="h-4 w-4" /> Promouvoir
-              </button>
+      </MenuTrigger>
+      <MenuContent className="w-48">
+        <MenuItem onClick={onView}>
+          <Eye className="h-4 w-4" /> Détails
+        </MenuItem>
+        {user.exclus
+          ? can("users.unban") && (
+              <MenuItem onClick={onUnban} className="text-emerald-600 dark:text-emerald-400 data-[highlighted]:bg-emerald-50 dark:data-[highlighted]:bg-emerald-950/40">
+                <CheckCircle2 className="h-4 w-4" /> Débannir
+              </MenuItem>
+            )
+          : can("users.ban") && (
+              <MenuItem onClick={onBan} className="text-red-600 dark:text-red-400 data-[highlighted]:bg-red-50 dark:data-[highlighted]:bg-red-950/40">
+                <Ban className="h-4 w-4" /> Bannir
+              </MenuItem>
             )}
-            {can("users.role") && user.typeCompte > 0 && (
-              <button onClick={() => { onRoleDown(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left">
-                <ShieldOff className="h-4 w-4" /> Rétrograder
-              </button>
-            )}
-            {can("users.delete") && (
-              <>
-                <hr className="my-1 border-zinc-200 dark:border-zinc-700" />
-                <button onClick={() => { onDelete(); setOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-red-50 dark:hover:bg-red-950/50 text-left text-red-600 dark:text-red-400">
-                  <Trash2 className="h-4 w-4" /> Supprimer
-                </button>
-              </>
-            )}
-          </div>
-        </>
+        {can("users.role") && user.typeCompte < 2 && (
+          <MenuItem onClick={onRoleUp}>
+            <Shield className="h-4 w-4" /> Promouvoir
+          </MenuItem>
+        )}
+        {can("users.role") && user.typeCompte > 0 && (
+          <MenuItem onClick={onRoleDown}>
+            <ShieldOff className="h-4 w-4" /> Rétrograder
+          </MenuItem>
+        )}
+        {can("users.delete") && (
+          <>
+            <hr className="my-1 border-zinc-200 dark:border-zinc-700" />
+            <MenuItem onClick={onDelete} className="text-red-600 dark:text-red-400 data-[highlighted]:bg-red-50 dark:data-[highlighted]:bg-red-950/40">
+              <Trash2 className="h-4 w-4" /> Supprimer
+            </MenuItem>
+          </>
+        )}
+      </MenuContent>
+    </MenuRoot>
+  );
+}
+
+function SortHeader({ label, k, sort, order, onToggle }: {
+  label: string;
+  k: string;
+  sort: string;
+  order: string;
+  onToggle: (k: string) => void;
+}) {
+  const active = sort === k;
+  const Icon = !active ? ArrowUpDown : order === "asc" ? ChevronUp : ChevronDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(k)}
+      className={cn(
+        "inline-flex items-center gap-1 uppercase tracking-wider transition-colors",
+        active ? "text-indigo-600 dark:text-indigo-400" : "hover:text-zinc-700 dark:hover:text-zinc-300"
       )}
-    </div>
+    >
+      {label}
+      <Icon className={cn("h-3 w-3", !active && "opacity-40")} />
+    </button>
   );
 }

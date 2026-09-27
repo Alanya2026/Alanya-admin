@@ -49,3 +49,7 @@ next-env.d.ts
 *.out
 *.synctex.gz
 *.toc
+.env.production
+.claude-profile
+PROMPT-CLAUDE.md
+.env.production

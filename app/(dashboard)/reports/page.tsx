@@ -20,22 +20,12 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { FeedListSkeleton } from "@/components/skeletons";
+import { ErrorState } from "@/components/ui/error-state";
 import { useHandleReport, useReportActions, useReports } from "@/hooks/useReports";
+import { reportReasonLabel } from "@/lib/report-labels";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import type { Report, ReportState } from "@/types";
-
-/** Libellés alignés sur ceux de l'application — mêmes clés, même vocabulaire. */
-const REASONS: Record<string, string> = {
-  harassment: "Harcèlement ou intimidation",
-  hate: "Propos haineux",
-  violence: "Violence ou menaces",
-  sexual: "Contenu sexuel",
-  scam: "Arnaque ou fraude",
-  spam: "Spam",
-  impersonation: "Usurpation d'identité",
-  other: "Autre",
-};
 
 const STATES: { value: ReportState | ""; label: string }[] = [
   { value: "open", label: "À traiter" },
@@ -103,7 +93,7 @@ export default function ReportsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data, isLoading, isFetching, refetch } = useReports({
+  const { data, isLoading, isFetching, isError, refetch } = useReports({
     state: state || undefined,
     search: debouncedSearch,
     page,
@@ -245,7 +235,9 @@ export default function ReportsPage() {
 
       {isLoading && <FeedListSkeleton count={4} />}
 
-      {!isLoading && rows.length === 0 && (
+      {!isLoading && !isFetching && isError && <ErrorState onRetry={() => refetch()} />}
+
+      {!isLoading && !isFetching && !isError && rows.length === 0 && (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-16 text-center">
             <ShieldQuestion className="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-700" />
@@ -290,7 +282,7 @@ export default function ReportsPage() {
                     ) : (
                       <UserX className="h-4 w-4 text-zinc-400" />
                     )}
-                    {REASONS[r.reason] ?? r.reason}
+                    {reportReasonLabel(r.reason)}
                   </CardTitle>
                   <CardDescription>
                     Signalé par {r.reporterNom ?? "un compte supprimé"} · {age(r.createdAt)}

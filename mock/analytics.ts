@@ -42,6 +42,8 @@ export const mockAnalytics: Analytics = {
     answered: 6120,
     missed: 1450,
     rejected: 553,
+    voicemail: 312,
+    voicemailAfterRing: 498,
     avgDuration: 218,
     totalDuration: 1334520,
     successRate: 75,
@@ -80,13 +82,10 @@ export const mockAnalytics: Analytics = {
     participants: 1770,
     attendees: 1115,
     invitations: 1458,
-    accepted: 1120,
-    declined: 240,
-    invited: 98,
-    noShow: 392,
+    joined: 1120,
+    invitedNeverJoined: 338,
     attendanceRate: 63,
-    acceptanceRate: 77,
-    noShowRate: 35,
+    joinRate: 77,
   },
   users: {
     byRole: [
@@ -102,6 +101,12 @@ export const mockAnalytics: Analytics = {
     { os: 'Android', count: 7820 },
     { os: 'iOS', count: 4210 },
     { os: 'Inconnu', count: 420 },
+  ],
+  // Volontairement plus bas que `devices` : un appareil se connecte une fois et
+  // renouvelle ensuite son jeton, donc le parc actif ne suit pas le flux.
+  activeDevices: [
+    { os: 'Android', count: 5140 },
+    { os: 'iOS', count: 2880 },
   ],
   conversations: {
     total: 18420,

@@ -13,6 +13,7 @@ import { DashboardContentSkeleton } from "@/components/skeletons";
 import { useStats, useActivityFeed } from "@/hooks/useAdmin";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { DashboardBanner } from "@/components/dashboard/DashboardBanner";
+import { ReportsOverview } from "@/components/dashboard/ReportsOverview";
 import { getAdminUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -132,6 +133,10 @@ export default function DashboardPage() {
             <StatCard title="Appels" value={stats.callsPeriod} icon={Phone} color="#8b5cf6" subtitle="cette période" trend={trend(stats.callsPeriod, analytics?.comparison.calls)} onClick={() => router.push("/analytics")} />
             <StatCard title="Statuts" value={stats.statusesPeriod} icon={Smile} color="#f59e0b" subtitle="cette période" trend={trend(stats.statusesPeriod, analytics?.comparison.statuses)} onClick={() => router.push("/analytics")} />
           </div>
+
+          {/* La file de modération se voit d'ici : un signalement ignoré est un
+              signalement traité demain. La décision reste sur /reports. */}
+          <ReportsOverview />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">

@@ -58,3 +58,4 @@ export { TripsContentSkeleton, TripRetentionContentSkeleton } from "./trips-skel
 export { BroadcastHistorySkeleton } from "./broadcast-skeleton";
 export { WelcomePageSkeleton } from "./welcome-skeleton";
 export { PurgeCardSkeleton, PurgesContentSkeleton } from "./purges-skeleton";
+export { HealthContentSkeleton } from "./health-skeleton";

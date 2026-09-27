@@ -121,12 +121,15 @@ export interface UserActivity {
   statusesPublished: number;
 }
 
+/** GET /api/admin/users/:id/logins — les colonnes de `userAccess`, brutes. */
 export interface LoginEntry {
-  idAccess: number;
+  idLogin: number;
   dateLogin: string;
   os_system: string;
   device: string;
   ipAdress: string;
+  /** Migration 085 ; absent des réponses d'un serveur plus ancien. */
+  origine?: "login" | "inscription" | "qr" | "recovery" | "refus";
 }
 
 export interface UsersResponse {
@@ -158,11 +161,12 @@ export interface CreateUserPayload {
   account_type?: number;
 }
 
-/** Socle de compte — les deux axes pilotés depuis la fiche utilisateur. */
+/**
+ * Socle de compte — le genre seul. La vérification ne se saisit plus : elle
+ * suit le dossier d'identité et l'abonnement (le serveur refuse ces champs).
+ */
 export interface SetUserSoclePayload {
   account_type?: number;
-  verification_status?: number;
-  verified_until?: string | null;
 }
 
 export interface ReservedAlanyaPhone {
@@ -200,6 +204,10 @@ export interface AssignablePhoneCheck {
   isPatternReserved: boolean;
   inReservedTable: boolean;
   isTaken: boolean;
+  /** Un utilisateur est en train d'acheter ce numéro : l'attribution est refusée. */
+  isHeld?: boolean;
+  /** Numéro quitté récemment : l'attribution reste possible, l'écran avertit. */
+  quarantineUntil?: string | null;
   assignable: boolean;
   reason: string | null;
   source: 'pattern' | 'table' | 'standard';
@@ -236,6 +244,14 @@ export interface CallStats {
   answered: number;
   missed: number;
   rejected: number;
+  /** Renvoyés au répondeur SANS avoir sonné — créneau de silence ou ligne
+   *  occupée. Seul seau exclu du dénominateur de `successRate` : ces appels
+   *  n'avaient aucune chance d'aboutir. */
+  voicemail: number;
+  /** A sonné, puis répondeur — délai sans réponse écoulé, ou refus explicite.
+   *  Reste au dénominateur de `successRate` : l'appel était joignable et
+   *  personne ne l'a pris. */
+  voicemailAfterRing: number;
   avgDuration: number;
   totalDuration: number;
   successRate: number;
@@ -267,18 +283,14 @@ export interface MeetingStats {
   attendees: number;
   /** Participants hors organisateur — les seuls à avoir eu une invitation à laquelle répondre. */
   invitations: number;
-  accepted: number;
-  declined: number;
-  /** Invités sans réponse. */
-  invited: number;
-  /** Ont accepté puis ne sont jamais venus. */
-  noShow: number;
-  /** attendees / participants — présence réelle, pas réponse à l'invitation. */
+  /** Ont rejoint au moins une fois (hors organisateur). */
+  joined: number;
+  /** Invités, jamais rejoint. */
+  invitedNeverJoined: number;
+  /** attendees / participants — présence réelle, à la seconde près. */
   attendanceRate: number;
-  /** accepted / invitations. */
-  acceptanceRate: number;
-  /** noShow / accepted. */
-  noShowRate: number;
+  /** joined / invitations. */
+  joinRate: number;
 }
 
 export interface UserAnalytics {
@@ -303,7 +315,10 @@ export interface Analytics {
   stories: StoryStats;
   meetings: MeetingStats;
   users: UserAnalytics;
+  /** Authentifications de la période, refus exclus — un flux, pas un parc. */
   devices: { os: string; count: number }[];
+  /** Appareils enrôlés et non révoqués qui se sont manifestés sur la période. */
+  activeDevices: { os: string; count: number }[];
   conversations: ConversationStats;
   heatmap: { dow: number; hour: number; count: number }[];
   comparison: { messages: number; calls: number; statuses: number; registrations: number };
@@ -897,4 +912,341 @@ export interface AiFinding {
 export interface AiReviewResult {
   findings: AiFinding[];
   model: string;
+}
+
+// ── Santé du service ───────────────────────────────────────────────────
+//
+// Ce que la supervision externe ne peut pas voir : un job de fond en échec
+// silencieux, une purge qui ne tourne plus, un pool de connexions saturé.
+// Le serveur, lui, répond parfaitement dans ces trois cas.
+
+export interface JobEnEchec {
+  id: number;
+  kind: string;
+  tentatives: number;
+  tentativesMax: number;
+  echoueLe: string;
+  erreur: string | null;
+}
+
+export interface FileDeJobs {
+  enAttente: number;
+  verrouilles: number;
+  enEchec: number;
+  workerActif: boolean;
+  derniersEchecs: JobEnEchec[];
+}
+
+export interface PurgeDernierPassage {
+  name: string;
+  /** `null` = cette purge n'a jamais tourné. C'est le cas qu'il faut voir. */
+  dernierPassage: string | null;
+  ok: boolean | null;
+  erreur: string | null;
+  dureeMs: number | null;
+  declencheur: string | null;
+}
+
+export interface EtatPoolMysql {
+  taille: number;
+  /** `false` si mysql2 a changé la forme de ses compteurs internes. */
+  mesurable: boolean;
+  ouvertes?: number;
+  libres?: number;
+  occupees?: number;
+  /** Non nul = le pool sature et des requêtes patientent. */
+  enAttente?: number;
+}
+
+export interface ServiceHealth {
+  jobs: FileDeJobs;
+  purges: PurgeDernierPassage[];
+  redis: { configure: boolean; connecte: boolean };
+  mysql: EtatPoolMysql;
+  timestamp: string;
+}
+
+// ── Abonnement (Alanya Plus) ──
+//
+// Réponses de /admin/billing/*, déjà converties en camelCase par lib/api.ts.
+// Les clés de langue des objets i18n (fr, en, zh) n'ont pas de `_` : elles
+// traversent la conversion intactes.
+
+export type BillingPhase = 'free' | 'grace' | 'paid';
+
+export interface BillingSettingsRow {
+  id: number;
+  paidEnabled: 0 | 1;
+  activatedAt: string | null;
+  graceUntil: string | null;
+  deactivatedAt: string | null;
+  defaultGraceDays: number;
+  trialDays: number;
+  retentionDays: number;
+  updatedBy: number | null;
+  updatedAt: string | null;
+}
+
+export interface BillingSettingsResponse {
+  settings: BillingSettingsRow;
+  phase: BillingPhase;
+  /** Fournisseur de paiement actif (variable PAYMENT_PROVIDER du serveur). */
+  provider: string;
+  /** Code qui empêche l'activation (ex. BILLING_PROVIDER_SIMULATED), ou null. */
+  activationBlockedBy: string | null;
+  /** Ce que l'activation déclencherait aujourd'hui. */
+  preview: { accounts: number; verifiedBadges: number };
+}
+
+/** Corps de PUT /admin/billing/settings — snake_case, comme le lit le serveur. */
+export interface BillingSettingsPatch {
+  default_grace_days?: number;
+  trial_days?: number;
+  retention_days?: number;
+}
+
+export interface BillingFeature {
+  code: string;
+  nameI18n: Translations;
+  descriptionI18n: Translations | null;
+  isPaid: number;
+  /** Livrée par le code : ne se règle pas depuis le panneau. */
+  isAvailable: number;
+  sortOrder: number;
+}
+
+export interface BillingFeaturePatch {
+  is_paid?: boolean;
+  name_i18n?: Translations;
+  description_i18n?: Translations | null;
+  sort_order?: number;
+}
+
+export interface BillingPlan {
+  id: number;
+  code: string;
+  nameI18n: Translations;
+  durationMonths: number;
+  priceAmount: number;
+  currency: string;
+  reminderDays: number;
+  isActive: number;
+  isFeatured: number;
+  sortOrder: number;
+  storeProductIos: string | null;
+  storeProductAndroid: string | null;
+  features: string[];
+  updatedAt?: string;
+}
+
+/** Corps de POST / PUT /admin/billing/plans — snake_case. */
+export interface BillingPlanPayload {
+  code: string;
+  name_i18n: Translations;
+  duration_months: number;
+  price_amount: number;
+  currency?: string;
+  reminder_days: number;
+  is_active?: boolean;
+  is_featured?: boolean;
+  sort_order?: number;
+  store_product_ios?: string | null;
+  store_product_android?: string | null;
+  features?: string[];
+}
+
+export type BillingPaymentStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
+
+/** Ce qu'un paiement achète : un abonnement, ou un numéro Alanya choisi (sans plan). */
+export type BillingPaymentProduct = 'plus' | 'phone';
+
+/** Ligne de GET /admin/billing/payments. Le numéro arrive déjà masqué. */
+export interface BillingPaymentRow {
+  id: number;
+  alanyaId: number;
+  userName: string | null;
+  /** Absent d'un serveur antérieur au numéro choisi : c'était alors toujours un abonnement. */
+  product?: BillingPaymentProduct;
+  /** Null pour un achat de numéro. */
+  plan: string | null;
+  provider: string;
+  channel: string | null;
+  msisdn: string | null;
+  amount: number;
+  currency: string;
+  status: BillingPaymentStatus;
+  providerRef: string | null;
+  /** INSUFFICIENT_FUNDS, USER_DECLINED, TIMEOUT… */
+  failureCode: string | null;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+export type BillingSubscriberFilter = 'active' | 'expiring' | 'expired' | 'all';
+
+export interface BillingSubscriberRow {
+  alanyaId: number;
+  userName: string | null;
+  alanyaPhone: string | null;
+  plan: string | null;
+  currentEnd: string;
+  autoRenew: boolean;
+  renewChannel: string | null;
+  purgeAfter: string | null;
+}
+
+/** 0 paiement, 1 essai, 2 offert, 3 compensation. */
+export type BillingPeriodSource = 0 | 1 | 2 | 3;
+
+export interface BillingPeriodRow {
+  id: number;
+  plan: string;
+  startsAt: string;
+  endsAt: string;
+  source: BillingPeriodSource;
+  /** false = période offerte sans la coche. */
+  grantsBadge?: boolean;
+  paymentId: number | null;
+  reason: string | null;
+  grantedByName: string | null;
+}
+
+export interface BillingEntitlementPeriod {
+  plan: string | null;
+  startsAt: string;
+  endsAt: string;
+  source: number;
+  autoRenew: boolean;
+}
+
+/**
+ * Droits d'un compte, tels que l'application les reçoit — mais convertis en
+ * camelCase, clés de `features` comprises (`verified_badge` → `verifiedBadge`).
+ */
+export interface BillingEntitlements {
+  phase: BillingPhase;
+  graceUntil: string | null;
+  period: BillingEntitlementPeriod | null;
+  upcoming: BillingEntitlementPeriod | null;
+  exempt: boolean;
+  features: Record<string, boolean>;
+  validUntil: string | null;
+  lapsedAt?: string | null;
+  /** Compte de BILLING_TEST_USERS : voit la phase payante interrupteur éteint. */
+  tester?: boolean;
+}
+
+// ── Vérification d'identité ──
+
+export type VerificationQueue = 'pending' | 'documents' | 'renamed' | 'decided' | 'all';
+
+export type VerificationRequestStatus =
+  | 'pending' | 'document_requested' | 'approved' | 'refused' | 'cancelled' | 'revoked';
+
+/** Ligne de GET /admin/verifications et de l'historique d'un compte. */
+export interface VerificationRow {
+  id: number;
+  alanyaId: number;
+  userName: string | null;
+  pseudo: string | null;
+  avatarUrl: string | null;
+  accountType: number;
+  targetType: number;
+  claimedName: string;
+  nameAtApproval: string | null;
+  /** Approuvé, mais le nom affiché a changé depuis : à réexaminer. */
+  nameChanged: boolean;
+  status: VerificationRequestStatus;
+  reason: string | null;
+  revokeReason: string | null;
+  reviewerName: string | null;
+  documents: number;
+  createdAt: string;
+  decidedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface VerificationDocument {
+  id: number;
+  /** 1 pièce d'identité, 4 selfie avec la pièce. */
+  docType: number;
+  mime: string;
+  size: number;
+  uploadedAt: string;
+  purgeAfter: string | null;
+  purged: boolean;
+  /** Nombre d'ouvertures déjà journalisées. */
+  views: number;
+}
+
+export interface VerificationDetail {
+  request: VerificationRow;
+  user: {
+    alanyaId: number;
+    nom: string;
+    pseudo: string;
+    avatarUrl: string | null;
+    alanyaPhone: string | null;
+    accountType: number;
+    verificationStatus: number;
+    verifiedUntil: string | null;
+    createdAt: string | null;
+  } | null;
+  documents: VerificationDocument[];
+  history: VerificationRow[];
+}
+
+export interface VerificationCount {
+  pending: number;
+  documents: number;
+  renamed: number;
+}
+
+// ── Sécurité ──
+//
+// GET / PUT /admin/security-settings. Une seule bascule pour l'instant : la
+// connexion par mot de passe réservée aux téléphones déjà enrôlés.
+
+export interface SecuritySettings {
+  deviceBindingEnabled: boolean;
+  updatedAt: string;
+}
+
+/** GET /admin/users/:id/billing — la carte « Abonnement et coche ». */
+/** Un changement de numéro Alanya, acheté ou fait par l'administration. */
+export interface PhoneHistoryEntry {
+  id: number;
+  oldPhone: string;
+  newPhone: string;
+  source: 'purchase' | 'admin';
+  changedAt: string;
+  changedByName: string | null;
+  /** Montant payé, pour un achat. */
+  amount: number | null;
+  currency: string | null;
+}
+
+/** GET /admin/users/:id/phone-history */
+export interface UserPhoneHistoryResponse {
+  quarantineDays: number;
+  /** Changement payé dont le numéro a été pris entre-temps : l'utilisateur doit en choisir un autre. */
+  pendingCredit: { orderId: number; createdAt: string } | null;
+  history: PhoneHistoryEntry[];
+}
+
+export interface UserBillingResponse {
+  entitlements: BillingEntitlements;
+  subscriber: {
+    currentEnd: string | null;
+    autoRenew: boolean;
+    renewChannel: string | null;
+    purgeAfter: string | null;
+  } | null;
+  badgeRevocation: {
+    revokedAt: string;
+    reason: string;
+    revokedByName: string | null;
+  } | null;
+  periods: BillingPeriodRow[];
+  payments: BillingPaymentRow[];
 }

@@ -48,6 +48,7 @@ export function SettingsPageSkeleton() {
       <SettingsCardSkeleton fields={1} withButton={false} index={1} />
       <SettingsCardSkeleton fields={1} withButton={false} index={2} />
       <SettingsCardSkeleton fields={0} withButton={false} index={3} />
+      <SettingsCardSkeleton fields={0} withButton={false} index={4} />
     </div>
   );
 }
