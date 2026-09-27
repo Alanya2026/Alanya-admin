@@ -4,7 +4,18 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, X, FileImage, Film, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 
+/**
+ * Route d'envoi, selon ce que devient le fichier (backend : routes/upload.js).
+ *  - `/upload/official` : média d'une diffusion ou de l'accueil. Rangé sous
+ *    `official/`, dans le bucket public `profilemedia` : il n'expire jamais.
+ *  - `/upload/avatar`   : photo de profil. Bucket public `alanyaprofile`.
+ * `/upload/media` n'est pas proposé : c'est la route des médias de
+ * discussion, qui expirent au bout de 30 jours.
+ */
+export type UploadEndpoint = "/upload/official" | "/upload/avatar";
+
 interface FileUploadProps {
+  endpoint: UploadEndpoint;
   accept?: string;
   maxSize?: number;
   onUploadComplete: (url: string, filename: string) => void;
@@ -23,6 +34,7 @@ interface UploadState {
 }
 
 export function FileUpload({
+  endpoint,
   accept = "image/*,video/*",
   maxSize = 50 * 1024 * 1024,
   onUploadComplete,
@@ -80,7 +92,7 @@ export function FileUpload({
       formData.append("file", file);
 
       try {
-        const res = await api.post("/upload/media", formData, {
+        const res = await api.post(endpoint, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           timeout: 120_000,
           onUploadProgress: (e) => {
@@ -101,7 +113,7 @@ export function FileUpload({
         onUploadError?.(msg);
       }
     },
-    [maxSize, onUploadComplete, onUploadError]
+    [endpoint, maxSize, onUploadComplete, onUploadError]
   );
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {

@@ -408,6 +408,7 @@ function BlockCard({
               </p>
             )}
             <FileUpload
+              endpoint="/upload/official"
               accept={block.blockType === "image" ? "image/*" : "video/*"}
               disabled={disabled}
               onUploadComplete={(url) => onUpdate({ mediaUrl: url })}
