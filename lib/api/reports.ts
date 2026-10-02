@@ -4,6 +4,30 @@ import { api } from '@/lib/api';
 
 type Wire<T> = { [K in keyof T]?: unknown };
 
+function toContext(raw: unknown): import('@/types').ReportContextMessage[] | null {
+  let liste = raw;
+  if (typeof liste === 'string') {
+    try {
+      liste = JSON.parse(liste);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(liste) || liste.length === 0) return null;
+  const out = liste
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === 'object')
+    .map((m) => ({
+      // `senderID` et non `senderId` : la clé est celle que le serveur écrit
+      // dans la colonne JSON, et `transformResponse` ne descend pas dans les
+      // valeurs JSON pour les passer en camelCase.
+      senderID: m.senderID != null ? Number(m.senderID) : null,
+      sendAt: m.sendAt != null ? String(m.sendAt) : null,
+      text: String(m.text ?? ''),
+    }))
+    .filter((m) => m.text !== '');
+  return out.length > 0 ? out : null;
+}
+
 function toReport(row: Wire<import('@/types').Report>): import('@/types').Report {
   // camelCase déjà appliqué par `transformResponse` — cf. toAuditEntry.
   return {
@@ -23,6 +47,12 @@ function toReport(row: Wire<import('@/types').Report>): import('@/types').Report
     msgSenderNom: (row.msgSenderNom as string) ?? null,
     msgType: row.msgType != null ? Number(row.msgType) : null,
     msgContent: (row.msgContent as string) ?? null,
+    msgContentFromReporter: Boolean(row.msgContentFromReporter),
+    msgWasEncrypted: Boolean(row.msgWasEncrypted),
+    // `context_excerpt` est une colonne JSON : mysql2 la rend déjà décodée,
+    // mais une chaîne arrive encore des lignes écrites avant. On accepte les
+    // deux plutôt que de perdre le contexte sur un détail de driver.
+    msgContext: toContext(row.msgContext),
     msgDeleted: Boolean(row.msgDeleted),
     msgSentAt: (row.msgSentAt as string) ?? null,
     actions: Number(row.actions ?? 0),

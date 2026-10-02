@@ -746,10 +746,39 @@ export interface Report {
   msgSenderNom: string | null;
   msgType: number | null;
   msgContent: string | null;
+  /**
+   * `true` quand `msgContent` est l'extrait joint par la personne qui
+   * signale, et non le contenu lu en base.
+   *
+   * La distinction n'est pas cosmétique : un message chiffré de bout en bout
+   * n'est lisible par personne d'autre que ses correspondants, serveur
+   * compris. Ce qui remonte alors, c'est ce que l'auteur du signalement
+   * **affirme** avoir lu — et il l'a choisi. Afficher les deux de la même
+   * façon donnerait à une affirmation le poids d'un relevé, au moment précis
+   * où quelqu'un s'apprête à restreindre ou exclure un compte.
+   */
+  msgContentFromReporter: boolean;
+  /** `true` quand le message signalé était chiffré : rien à lire en base. */
+  msgWasEncrypted: boolean;
+  /**
+   * Les messages qui précèdent, joints par la personne qui signale.
+   *
+   * Un message seul se prête à tous les malentendus : « d'accord, je le
+   * fais » n'a pas le même sens après une plaisanterie qu'après une menace.
+   */
+  msgContext: ReportContextMessage[] | null;
   msgDeleted: boolean;
   msgSentAt: string | null;
   /** Nombre de décisions déjà prises. */
   actions: number;
+}
+
+/** Un message de contexte joint à un signalement. */
+export interface ReportContextMessage {
+  /** `null` quand le client ne l'a pas fourni — à ne pas confondre avec 0. */
+  senderID: number | null;
+  sendAt: string | null;
+  text: string;
 }
 
 export interface ReportsResponse {

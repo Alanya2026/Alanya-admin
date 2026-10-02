@@ -328,10 +328,60 @@ export default function ReportsPage() {
                       <p className="mt-1 whitespace-pre-wrap break-words text-sm">
                         {r.msgContent || (
                           <span className="italic text-zinc-400">
-                            {r.msgType === 0 ? "message vide" : "contenu non textuel"}
+                            {r.msgWasEncrypted
+                              ? "message chiffré, et aucun extrait joint"
+                              : r.msgType === 0
+                                ? "message vide"
+                                : "contenu non textuel"}
                           </span>
                         )}
                       </p>
+
+                      {/*
+                        La provenance du texte, affichée avant toute décision.
+                        Un message chiffré de bout en bout n'est lisible par
+                        personne d'autre que ses correspondants : ce qui remonte
+                        est ce que l'auteur du signalement AFFIRME avoir lu, et
+                        qu'il a choisi de montrer. Le présenter comme un relevé
+                        de base serait donner à une affirmation un poids qu'elle
+                        n'a pas, juste avant d'exclure un compte.
+                      */}
+                      {r.msgContentFromReporter && (
+                        <p className="mt-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                          Extrait fourni par l&apos;auteur du signalement
+                          {r.msgWasEncrypted
+                            ? " : le message est chiffré de bout en bout, le serveur ne peut pas le relire."
+                            : "."}
+                        </p>
+                      )}
+
+                      {r.msgContext && r.msgContext.length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-zinc-500">
+                            {r.msgContext.length} message
+                            {r.msgContext.length > 1 ? "s" : ""} de contexte
+                          </summary>
+                          <ul className="mt-1 space-y-1 border-l-2 border-zinc-200 pl-2 dark:border-zinc-700">
+                            {r.msgContext.map((m, i) => (
+                              <li key={i} className="text-xs text-zinc-600 dark:text-zinc-400">
+                                <span className="font-medium">
+                                  {m.senderID === r.msgSenderId
+                                    ? r.msgSenderNom ?? "auteur du message"
+                                    : m.senderID === r.reporterId
+                                      ? r.reporterNom ?? "auteur du signalement"
+                                      : "autre participant"}
+                                </span>
+                                {m.sendAt
+                                  ? ` · ${new Date(m.sendAt).toLocaleString("fr-FR")}`
+                                  : ""}
+                                <span className="block whitespace-pre-wrap break-words">
+                                  {m.text}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                     </>
                   )}
                 </div>
