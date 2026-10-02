@@ -50,8 +50,8 @@ export default function GroupsPage() {
     const q = search.trim().toLowerCase();
     const list = groups.filter((g) => {
       if (q && !g.groupName?.toLowerCase().includes(q)) return false;
-      if (values.status === "active" && !g.lastMessage) return false;
-      if (values.status === "inactive" && g.lastMessage) return false;
+      if (values.status === "active" && !g.lastMessageAt) return false;
+      if (values.status === "inactive" && g.lastMessageAt) return false;
       return true;
     });
     const dir = values.order === "asc" ? 1 : -1;
@@ -168,9 +168,27 @@ export default function GroupsPage() {
                     </div>
                     <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-500">
                       <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{group.members} membres</span>
-                      <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{group.lastMessage ? "Actif" : "Inactif"}</span>
+                      <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" />{group.lastMessageAt ? "Actif" : "Inactif"}</span>
                     </div>
-                    {group.lastMessage && <p className="text-xs text-zinc-400 mt-2 truncate">{group.lastMessage}</p>}
+                    {/*
+                      L'aperçu du dernier message n'est plus affiché. Sous
+                      chiffrement de bout en bout, `conversation.lastMessage`
+                      ne porte plus de texte : le serveur ne peut pas calculer
+                      l'aperçu d'un corps qu'il ne sait pas ouvrir. Il ne
+                      restait donc ici qu'un « Message chiffré » répété à
+                      chaque ligne, et — pour les conversations encore en
+                      clair — un extrait de conversation privée dans un écran
+                      d'administration qui n'a aucune raison de le montrer.
+
+                      L'activité se lit maintenant sur `lastMessageAt`, qui la
+                      dit mieux : une date ne dépend pas de ce que le serveur
+                      arrive à lire du contenu.
+                    */}
+                    {group.lastMessageAt && (
+                      <p className="text-xs text-zinc-400 mt-2">
+                        Dernière activité le {new Date(group.lastMessageAt).toLocaleDateString("fr")}
+                      </p>
+                    )}
                     <p className="text-xs text-zinc-400 mt-1">Créé le {group.createdAt ? new Date(group.createdAt).toLocaleDateString("fr") : "—"}</p>
                   </div>
                 </div>

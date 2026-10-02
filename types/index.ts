@@ -329,7 +329,19 @@ export interface Group {
   conversID: number;
   groupName: string;
   groupPhoto: string;
-  lastMessage: string;
+  /*
+   * `lastMessage` a été retiré de ce type, volontairement.
+   *
+   * Le serveur l'envoie toujours, mais sous chiffrement de bout en bout il
+   * ne porte plus de texte — le serveur ne sait pas ouvrir le corps. Et
+   * pour une conversation en clair, c'était un extrait de conversation
+   * privée exposé dans un écran d'administration.
+   *
+   * Retiré du TYPE et pas seulement de l'affichage : tant que le champ
+   * existe, il se réaffiche au premier écran qui le trouve pratique.
+   * L'activité se lit sur `lastMessageAt`, le contenu d'un message ne
+   * remonte que par un signalement.
+   */
   lastMessageAt: string;
   members: number;
   createdAt: string;
@@ -351,7 +363,19 @@ export interface GroupDetail {
   conversID: number;
   groupName: string;
   groupPhoto: string | null;
-  lastMessage: string | null;
+  /*
+   * `lastMessage` a été retiré de ce type, volontairement.
+   *
+   * Le serveur l'envoie toujours, mais sous chiffrement de bout en bout il
+   * ne porte plus de texte — le serveur ne sait pas ouvrir le corps. Et
+   * pour une conversation en clair, c'était un extrait de conversation
+   * privée exposé dans un écran d'administration.
+   *
+   * Retiré du TYPE et pas seulement de l'affichage : tant que le champ
+   * existe, il se réaffiche au premier écran qui le trouve pratique.
+   * L'activité se lit sur `lastMessageAt`, le contenu d'un message ne
+   * remonte que par un signalement.
+   */
   lastMessageAt: string | null;
   memberCount: number;
   messageCount: number;

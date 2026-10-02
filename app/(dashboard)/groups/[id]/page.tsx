@@ -78,7 +78,7 @@ export default function GroupDetailPage() {
               </Avatar>
               <h2 className="text-xl font-bold truncate">{group.groupName}</h2>
               <p className="text-sm text-zinc-500 mt-1">
-                {group.lastMessage ? "Groupe actif" : "Groupe inactif"}
+                {group.lastMessageAt ? "Groupe actif" : "Groupe inactif"}
               </p>
             </CardContent>
           </Card>
@@ -91,13 +91,20 @@ export default function GroupDetailPage() {
               <Row icon={Users} label={`${group.memberCount} membres`} />
               <Row icon={MessageSquare} label={`${group.messageCount.toLocaleString()} messages`} />
               <Row icon={Calendar} label={`Créé le ${group.createdAt ? new Date(group.createdAt).toLocaleDateString("fr") : "—"}`} />
-              {group.lastMessage && (
+              {/*
+                Le texte du dernier message n'est plus montré : sous
+                chiffrement de bout en bout, le serveur ne peut pas l'ouvrir,
+                et sur une conversation en clair c'est un extrait privé dans
+                un écran d'administration. Seule la date reste — c'est elle
+                qui répond à la question posée ici, « ce groupe vit-il ? ».
+
+                Le contenu d'un message ne remonte que par un signalement,
+                joint par la personne qui signale et dans ce seul écran.
+              */}
+              {group.lastMessageAt && (
                 <div className="pt-2 border-t">
-                  <p className="text-xs text-zinc-400 mb-1">Dernier message</p>
-                  <p className="text-sm truncate">{group.lastMessage}</p>
-                  {group.lastMessageAt && (
-                    <p className="text-xs text-zinc-400 mt-1">{new Date(group.lastMessageAt).toLocaleString("fr")}</p>
-                  )}
+                  <p className="text-xs text-zinc-400 mb-1">Dernière activité</p>
+                  <p className="text-sm">{new Date(group.lastMessageAt).toLocaleString("fr")}</p>
                 </div>
               )}
             </CardContent>
