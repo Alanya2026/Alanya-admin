@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, channelLabel, nextPeriodStart, paymentItemLabel, planLabel } from "./billing-labels";
+import { PERIOD_SOURCE_LABEL, addMonths, channelLabel, nextPeriodStart, paymentItemLabel, planLabel } from "./billing-labels";
 import type { BillingPlan } from "@/types";
 
 describe("addMonths", () => {
@@ -25,12 +25,24 @@ describe("nextPeriodStart", () => {
     expect(nextPeriodStart(now, null, "2026-10-01T00:00:00Z").toISOString()).toBe("2026-10-01T00:00:00.000Z");
   });
 
+  it("jamais avant la fin de l'essai du compte", () => {
+    expect(nextPeriodStart(now, null, null, "2026-12-01T00:00:00Z").toISOString()).toBe("2026-12-01T00:00:00.000Z");
+    expect(nextPeriodStart(now, "2027-03-01T00:00:00Z", null, "2026-12-01T00:00:00Z").toISOString()).toBe("2027-03-01T00:00:00.000Z");
+    expect(nextPeriodStart(now, null, null, "2026-01-01T00:00:00Z").toISOString()).toBe(now.toISOString());
+  });
+
   it("une fin passée ne recule pas le départ", () => {
     expect(nextPeriodStart(now, "2026-01-01T00:00:00Z", "invalide").toISOString()).toBe(now.toISOString());
   });
 });
 
 describe("libellés", () => {
+  it("source d'une période, code d'activation compris", () => {
+    expect(PERIOD_SOURCE_LABEL[0]).toBe("Payé");
+    expect(PERIOD_SOURCE_LABEL[4]).toBe("Code");
+    expect(PERIOD_SOURCE_LABEL).toHaveLength(5);
+  });
+
   it("moyens de paiement", () => {
     expect(channelLabel("orange_money")).toBe("Orange Money");
     expect(channelLabel("mtn_momo")).toBe("MTN MoMo");

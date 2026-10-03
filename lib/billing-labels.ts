@@ -31,7 +31,7 @@ export const FAILURE_LABEL: Record<string, string> = {
 };
 
 /** Index = `subscription_period.source`. */
-export const PERIOD_SOURCE_LABEL = ["Payé", "Essai", "Offert", "Compensation"] as const;
+export const PERIOD_SOURCE_LABEL = ["Payé", "Essai", "Offert", "Compensation", "Code"] as const;
 
 export function channelLabel(channel: string | null | undefined): string {
   if (channel === "orange_money") return "Orange Money";
@@ -73,16 +73,18 @@ export function addMonths(date: Date, months: number): Date {
 
 /**
  * Début d'une période ajoutée maintenant : à la suite de l'abonnement en
- * cours, jamais avant la fin de la grâce (paymentRules.nextPeriodStart).
+ * cours, jamais avant la fin de la grâce, ni avant la fin de l'essai du compte
+ * (régime 2) — paymentRules.nextPeriodStart.
  */
 export function nextPeriodStart(
   now: Date,
   currentEnd?: string | null,
   graceUntil?: string | null,
+  trialEnd?: string | null,
 ): Date {
   const t = (v?: string | null) => {
     const n = v ? new Date(v).getTime() : NaN;
     return Number.isNaN(n) ? -Infinity : n;
   };
-  return new Date(Math.max(now.getTime(), t(currentEnd), t(graceUntil)));
+  return new Date(Math.max(now.getTime(), t(currentEnd), t(graceUntil), t(trialEnd)));
 }

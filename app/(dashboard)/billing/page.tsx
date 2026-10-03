@@ -26,10 +26,10 @@ import { BillingNav } from "@/components/billing/BillingNav";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   useActivateBilling, useBillingSettings, useDeactivateBilling,
-  useExtendBillingGrace, useUpdateBillingSettings,
+  useExtendBillingGrace, useSetBillingModel, useUpdateBillingSettings,
 } from "@/hooks/useBilling";
 import { cn } from "@/lib/utils";
-import type { BillingPhase, BillingSettingsResponse } from "@/types";
+import type { BillingModel, BillingPhase, BillingSettingsResponse } from "@/types";
 
 const MIN_GRACE = 7;
 const DAY = 86_400_000;
@@ -44,6 +44,30 @@ const serverError = (e: unknown) =>
   (e as { response?: { data?: { error?: string } } })?.response?.data?.error
   || (e instanceof Error ? e.message : undefined);
 
+/** Le régime en vigueur ; sans réglage (serveur antérieur à la migration 090), Alanya Plus. */
+const modelOf = (data: BillingSettingsResponse): BillingModel => data.model ?? data.settings.model ?? 1;
+
+const MODEL_OPTIONS: { value: BillingModel; title: string; lines: string[] }[] = [
+  {
+    value: 1,
+    title: "Alanya Plus",
+    lines: [
+      "Traduction, sauvegarde, trajets et sonneries par liste réservés aux abonnés.",
+      "Paiement mobile money dans l'application, renouvellement automatique possible.",
+      "Messages et appels toujours ouverts à tous.",
+    ],
+  },
+  {
+    value: 2,
+    title: "Essai de 3 mois, puis réception seule",
+    lines: [
+      "Chaque compte a un essai gratuit, puis ne fait plus que recevoir messages et appels.",
+      "Un abonnement d'un an se prend sur le site de paiement ; le code reçu s'entre dans l'application.",
+      "Aucun paiement dans l'application, aucun renouvellement automatique.",
+    ],
+  },
+];
+
 const PHASE_LABEL: Record<BillingPhase, string> = { free: "Gratuit", grace: "Grâce", paid: "Payant" };
 
 const PHASE_BADGE: Record<BillingPhase, string> = {
@@ -56,11 +80,16 @@ const PHASE_BADGE: Record<BillingPhase, string> = {
 
 function PhaseStrip({ data }: { data: BillingSettingsResponse }) {
   const { phase, settings } = data;
+  const trial = modelOf(data) === 2;
   const graceEnd = phase === "free"
     ? new Date(Date.now() + settings.defaultGraceDays * DAY)
     : settings.graceUntil;
   const segments: { key: BillingPhase; title: string; detail: string }[] = [
-    { key: "free", title: "Gratuit", detail: "tout pour tous · coche sur vérification seule" },
+    {
+      key: "free",
+      title: "Gratuit",
+      detail: trial ? "tout est ouvert pour tous, aucun décompte d'essai" : "tout pour tous · coche sur vérification seule",
+    },
     {
       key: "grace",
       title: "Grâce",
@@ -68,7 +97,13 @@ function PhaseStrip({ data }: { data: BillingSettingsResponse }) {
         ? `${settings.defaultGraceDays} jours après l'activation · jusqu'au ${fmtDate(graceEnd)}`
         : `jusqu'au ${fmtDate(graceEnd)}`,
     },
-    { key: "paid", title: "Payant", detail: "fonctionnalités et coche réservées aux abonnés" },
+    {
+      key: "paid",
+      title: "Payant",
+      detail: trial
+        ? `après ses ${settings.trialDays} jours d'essai, un compte sans abonnement ne fait que recevoir`
+        : "fonctionnalités et coche réservées aux abonnés",
+    },
   ];
   return (
     <ol className="grid grid-cols-1 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 sm:grid-cols-[1.1fr_1fr_1.3fr]">
@@ -115,6 +150,33 @@ function Figure({ value, label, icon: Icon }: { value: string; label: string; ic
 }
 
 function ProviderBanner({ data }: { data: BillingSettingsResponse }) {
+  if (modelOf(data) === 2) {
+    if (data.activationBlockedBy === "BILLING_CODE_SECRET_MISSING") {
+      return (
+        <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <p>
+            <strong>Secret des codes absent.</strong>{" "}
+            L&apos;activation est refusée tant que <code className="font-mono">ACTIVATION_CODE_SECRET</code>{" "}
+            (32 caractères au moins) n&apos;est pas posé dans le <code className="font-mono">.env</code> du serveur :
+            sans lui, aucun code ne peut être émis ni vérifié.
+          </p>
+        </div>
+      );
+    }
+    if (!data.settings.payUrl) {
+      return (
+        <div className="flex gap-2.5 rounded-lg bg-zinc-100 p-3 text-sm text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-300">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Aucun site de paiement n&apos;est renseigné : le bouton « Payer » de l&apos;application reste grisé.
+            Les codes générés dans l&apos;onglet Codes se saisissent normalement.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
   if (data.activationBlockedBy === "BILLING_PROVIDER_SIMULATED") {
     return (
       <div className="flex gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
@@ -138,6 +200,73 @@ function ProviderBanner({ data }: { data: BillingSettingsResponse }) {
   return null;
 }
 
+// ── Régime ───────────────────────────────────────────────────────────────
+
+/**
+ * Lequel des deux régimes est en vigueur. Se change payant éteint seulement :
+ * passer au régime essai payant allumé fermerait d'un coup l'envoi à tous les
+ * comptes dont l'essai serait déjà écoulé. Le régime essai s'installe donc par
+ * l'activation, avec sa grâce.
+ */
+function ModelCard({
+  data, canEdit, onChange,
+}: {
+  data: BillingSettingsResponse;
+  canEdit: boolean;
+  onChange: (m: BillingModel) => void;
+}) {
+  const current = modelOf(data);
+  const locked = data.phase !== "free";
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Régime</CardTitle>
+        <CardDescription>
+          {locked
+            ? "Le régime ne se change que payant éteint : désactivez d'abord le payant."
+            : "Ce que devient l'application quand le payant s'allume."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div role="radiogroup" aria-label="Régime de l'abonnement" className="grid gap-3 md:grid-cols-2">
+          {MODEL_OPTIONS.map((o) => {
+            const on = o.value === current;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={!canEdit || locked || on}
+                onClick={() => onChange(o.value)}
+                className={cn(
+                  "flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  on
+                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40"
+                    : "border-zinc-200 hover:border-zinc-300 disabled:opacity-60 disabled:hover:border-zinc-200 dark:border-zinc-800 dark:hover:border-zinc-700",
+                )}
+              >
+                <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                  {o.title}
+                  {on && (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                      En vigueur
+                    </span>
+                  )}
+                </span>
+                <ul className="space-y-1 text-xs leading-snug text-zinc-500 dark:text-zinc-400">
+                  {o.lines.map((l) => <li key={l}>• {l}</li>)}
+                </ul>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Réglages ─────────────────────────────────────────────────────────────
 
 const FIELDS = [
@@ -149,7 +278,7 @@ const FIELDS = [
   {
     key: "trial_days" as const, from: "trialDays" as const,
     label: "Essai des nouveaux inscrits", min: 0, max: 365,
-    help: "Après la grâce, accès complet offert à chaque inscrit. 0 : pas d'essai.",
+    help: "Régime essai : durée gratuite de chaque compte à partir de son inscription (90 = trois mois). Sans effet en régime Alanya Plus.",
   },
   {
     key: "retention_days" as const, from: "retentionDays" as const,
@@ -160,9 +289,25 @@ const FIELDS = [
 
 type FieldKey = (typeof FIELDS)[number]["key"];
 
+/** https obligatoire, sans identifiants ni fragment : ce que le serveur accepte (parsePayUrl). */
+function payUrlError(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  try {
+    const u = new URL(t);
+    if (u.protocol !== "https:" || u.username || u.password || u.hash || !u.hostname.includes(".")) throw new Error();
+    return t.length > 255 ? "255 caractères au plus." : null;
+  } catch {
+    return "Adresse https complète attendue, par exemple https://pay.alanya237.com/abonnement";
+  }
+}
+
 function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdit: boolean }) {
   const { addToast } = useToast();
   const update = useUpdateBillingSettings();
+  const trial = modelOf(data) === 2;
+  const [payUrl, setPayUrl] = useState(data.settings.payUrl ?? "");
+  useEffect(() => setPayUrl(data.settings.payUrl ?? ""), [data.settings.updatedAt, data.settings.payUrl]);
   const initial = (): Record<FieldKey, string> => ({
     default_grace_days: String(data.settings.defaultGraceDays),
     trial_days: String(data.settings.trialDays),
@@ -178,14 +323,17 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
       errors[f.key] = `Entre ${f.min} et ${f.max} jours`;
     }
   }
-  const dirty = FIELDS.some((f) => Number(values[f.key]) !== data.settings[f.from]);
-  const valid = Object.keys(errors).length === 0;
+  const payUrlErr = trial ? payUrlError(payUrl) : null;
+  const payUrlDirty = trial && payUrl.trim() !== (data.settings.payUrl ?? "");
+  const dirty = FIELDS.some((f) => Number(values[f.key]) !== data.settings[f.from]) || payUrlDirty;
+  const valid = Object.keys(errors).length === 0 && !payUrlErr;
 
   const save = () => {
-    const patch: Record<string, number> = {};
+    const patch: Record<string, number | string | null> = {};
     for (const f of FIELDS) {
       if (Number(values[f.key]) !== data.settings[f.from]) patch[f.key] = Number(values[f.key]);
     }
+    if (payUrlDirty) patch.pay_url = payUrl.trim() || null;
     update.mutate(patch, {
       onSuccess: () => addToast({ title: "Réglages enregistrés", variant: "success" }),
       onError: (e) => addToast({ title: "Échec de l'enregistrement", description: serverError(e), variant: "error" }),
@@ -222,9 +370,28 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
             </div>
           ))}
         </div>
+        {trial && (
+          <div className="space-y-1.5">
+            <label htmlFor="pay-url" className="text-sm font-medium">Site de paiement</label>
+            <Input
+              id="pay-url"
+              type="url"
+              inputMode="url"
+              value={payUrl}
+              disabled={!canEdit}
+              placeholder="https://pay.alanya237.com/abonnement"
+              aria-invalid={Boolean(payUrlErr)}
+              onChange={(e) => setPayUrl(e.target.value)}
+              className={cn(payUrlErr && "border-red-400 focus-visible:ring-red-400")}
+            />
+            <p className={cn("text-xs leading-snug", payUrlErr ? "text-red-500" : "text-zinc-500 dark:text-zinc-400")}>
+              {payUrlErr ?? "Là où le bouton « Payer » de l'application envoie l'utilisateur. Vide : le bouton est grisé. Aucune donnée personnelle n'est ajoutée à l'adresse, seulement la langue."}
+            </p>
+          </div>
+        )}
         {canEdit && (
           <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-            <Button variant="outline" disabled={!dirty || update.isPending} onClick={() => setValues(initial())}>
+            <Button variant="outline" disabled={!dirty || update.isPending} onClick={() => { setValues(initial()); setPayUrl(data.settings.payUrl ?? ""); }}>
               Annuler
             </Button>
             <Button disabled={!dirty || !valid || update.isPending} onClick={save}>
@@ -240,7 +407,7 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
 
 // ── Page ─────────────────────────────────────────────────────────────────
 
-type Dialog = null | "activate" | "deactivate" | "extend";
+type Dialog = null | "activate" | "deactivate" | "extend" | "model";
 
 export default function BillingPage() {
   const { can } = usePermissions();
@@ -250,6 +417,8 @@ export default function BillingPage() {
   const activate = useActivateBilling();
   const deactivate = useDeactivateBilling();
   const extend = useExtendBillingGrace();
+  const setModel = useSetBillingModel();
+  const [nextModel, setNextModel] = useState<BillingModel>(2);
 
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState("");
@@ -275,6 +444,7 @@ export default function BillingPage() {
   });
 
   const phase = data?.phase ?? "free";
+  const trialModel = data ? modelOf(data) === 2 : false;
   const showSkeleton = isLoading || (isFetching && !data);
 
   return (
@@ -287,7 +457,9 @@ export default function BillingPage() {
             {data && <Badge className={cn("ml-1 border-0", PHASE_BADGE[phase])}>{PHASE_LABEL[phase]}</Badge>}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            L&apos;offre Alanya Plus : quand elle devient payante, et à quelles conditions.
+            {trialModel
+              ? "L'essai gratuit, puis la réception seule : quand le payant s'allume, et à quelles conditions."
+              : "L'offre Alanya Plus : quand elle devient payante, et à quelles conditions."}
           </p>
         </div>
         <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching} className="shrink-0" aria-label="Actualiser">
@@ -380,14 +552,39 @@ export default function BillingPage() {
             </CardContent>
           </Card>
 
+          <ModelCard
+            data={data}
+            canEdit={canSettings}
+            onChange={(m) => { setNextModel(m); open("model"); }}
+          />
+
           <SettingsCard data={data} canEdit={canSettings} />
+
+          <ConfirmDialog
+            open={dialog === "model"}
+            onOpenChange={(o) => !o && setDialog(null)}
+            title={nextModel === 2 ? "Passer au régime essai ?" : "Revenir à Alanya Plus ?"}
+            description={nextModel === 2
+              ? "Chaque compte aura un essai gratuit, puis ne fera plus que recevoir messages et appels. Rien ne change tant que vous n'activez pas le payant : c'est l'activation qui ouvre la grâce des comptes existants."
+              : "Les fonctionnalités annexes redeviennent le seul objet de l'abonnement, et messages et appels restent ouverts à tous. Le paiement dans l'application revient."}
+            confirmLabel="Changer de régime"
+            pending={setModel.isPending}
+            onConfirm={() => {
+              if (!reasonOk) return;
+              setModel.mutate({ model: nextModel, reason: reason.trim() }, done("Régime modifié"));
+            }}
+          >
+            <ReasonField value={reason} onChange={setReason} placeholder="Passage au modèle à essai de trois mois" />
+          </ConfirmDialog>
 
           <ConfirmDialog
             open={dialog === "activate"}
             onOpenChange={(o) => !o && setDialog(null)}
             title="Activer le payant ?"
             description={graceDaysOk
-              ? `Les fonctionnalités Plus deviendront payantes le ${fmtDate(new Date(Date.now() + graceDaysN * DAY))}. D'ici là, rien ne change pour personne.`
+              ? (trialModel
+                ? `Tous les comptes gardent tout jusqu'au ${fmtDate(new Date(Date.now() + graceDaysN * DAY))}. Ensuite, un compte sans abonnement et sans essai en cours ne pourra plus ni envoyer ni appeler.`
+                : `Les fonctionnalités Plus deviendront payantes le ${fmtDate(new Date(Date.now() + graceDaysN * DAY))}. D'ici là, rien ne change pour personne.`)
               : "Choisissez la durée de la grâce."}
             confirmLabel="Activer"
             pending={activate.isPending}
@@ -400,7 +597,11 @@ export default function BillingPage() {
               <ul className="space-y-1.5 text-sm text-zinc-600 dark:text-zinc-300">
                 <li>• Annonce du compte officiel à {data.preview.accounts.toLocaleString("fr-FR")} comptes.</li>
                 <li>• Rappel sept jours avant la fin de la grâce, aux comptes sans abonnement.</li>
-                <li>• À la fin : fonctionnalités fermées aux non-abonnés, données conservées {data.settings.retentionDays} jours.</li>
+                {trialModel ? (
+                  <li>• À la fin : les comptes sans abonnement reçoivent toujours messages et appels, mais n&apos;envoient plus. Les nouveaux comptes ont {data.settings.trialDays} jours d&apos;essai.</li>
+                ) : (
+                  <li>• À la fin : fonctionnalités fermées aux non-abonnés, données conservées {data.settings.retentionDays} jours.</li>
+                )}
               </ul>
               <div className="space-y-1.5">
                 <label htmlFor="grace-days" className="text-sm font-medium">Durée de la grâce (jours)</label>
