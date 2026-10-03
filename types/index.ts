@@ -879,15 +879,22 @@ export interface ServiceHealth {
 
 export type BillingPhase = 'free' | 'grace' | 'paid';
 
+/** Régime en vigueur : 1 = Alanya Plus, 2 = essai de 3 mois puis réception seule. */
+export type BillingModel = 1 | 2;
+
 export interface BillingSettingsRow {
   id: number;
   paidEnabled: 0 | 1;
+  /** Absent d'un serveur antérieur à la migration 090 : c'était alors Alanya Plus. */
+  model?: BillingModel;
   activatedAt: string | null;
   graceUntil: string | null;
   deactivatedAt: string | null;
   defaultGraceDays: number;
   trialDays: number;
   retentionDays: number;
+  /** Site de paiement (https). Nul : le bouton de l'application est grisé. */
+  payUrl?: string | null;
   updatedBy: number | null;
   updatedAt: string | null;
 }
@@ -895,9 +902,14 @@ export interface BillingSettingsRow {
 export interface BillingSettingsResponse {
   settings: BillingSettingsRow;
   phase: BillingPhase;
+  /** Régime en vigueur (absent d'un serveur antérieur : Alanya Plus). */
+  model?: BillingModel;
   /** Fournisseur de paiement actif (variable PAYMENT_PROVIDER du serveur). */
   provider: string;
-  /** Code qui empêche l'activation (ex. BILLING_PROVIDER_SIMULATED), ou null. */
+  /**
+   * Code qui empêche l'activation, ou null : BILLING_PROVIDER_SIMULATED (régime 1)
+   * ou BILLING_CODE_SECRET_MISSING (régime 2).
+   */
   activationBlockedBy: string | null;
   /** Ce que l'activation déclencherait aujourd'hui. */
   preview: { accounts: number; verifiedBadges: number };
@@ -908,6 +920,8 @@ export interface BillingSettingsPatch {
   default_grace_days?: number;
   trial_days?: number;
   retention_days?: number;
+  /** Adresse https du site de paiement ; null ou vide l'efface. */
+  pay_url?: string | null;
 }
 
 export interface BillingFeature {
@@ -1000,8 +1014,8 @@ export interface BillingSubscriberRow {
   purgeAfter: string | null;
 }
 
-/** 0 paiement, 1 essai, 2 offert, 3 compensation. */
-export type BillingPeriodSource = 0 | 1 | 2 | 3;
+/** 0 paiement, 1 essai, 2 offert, 3 compensation, 4 code d'activation. */
+export type BillingPeriodSource = 0 | 1 | 2 | 3 | 4;
 
 export interface BillingPeriodRow {
   id: number;
@@ -1030,6 +1044,10 @@ export interface BillingEntitlementPeriod {
  */
 export interface BillingEntitlements {
   phase: BillingPhase;
+  /** Absent d'un serveur antérieur à la migration 090 : Alanya Plus. */
+  model?: BillingModel;
+  /** Essai du compte (régime 2) : sa fin, et s'il court encore. Nul hors régime 2. */
+  trial?: { endsAt: string; active: boolean } | null;
   graceUntil: string | null;
   period: BillingEntitlementPeriod | null;
   upcoming: BillingEntitlementPeriod | null;
@@ -1039,6 +1057,59 @@ export interface BillingEntitlements {
   lapsedAt?: string | null;
   /** Compte de BILLING_TEST_USERS : voit la phase payante interrupteur éteint. */
   tester?: boolean;
+}
+
+// ── Codes d'activation (régime essai) ──
+
+export type BillingCodeStatus = 'available' | 'redeemed' | 'revoked' | 'expired';
+
+/** Le code en clair n'existe jamais ici : seulement ses quatre derniers symboles. */
+export interface BillingCodeRow {
+  id: number;
+  hint: string;
+  status: BillingCodeStatus;
+  label: string | null;
+  source: 'web' | 'admin';
+  planCode: string;
+  durationMonths: number;
+  amountPaid: number;
+  currency: string;
+  orderRef: string | null;
+  buyerContact: string | null;
+  createdAt: string;
+  expiresAt: string;
+  redeemedBy: number | null;
+  redeemedByName: string | null;
+  redeemedAt: string | null;
+  revokedAt: string | null;
+  revokeReason: string | null;
+}
+
+export interface BillingCodesResponse {
+  total: number;
+  rows: BillingCodeRow[];
+}
+
+export interface BillingCodeFilter {
+  status?: BillingCodeStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Corps de POST /admin/billing/codes — snake_case. */
+export interface BillingCodesPayload {
+  count: number;
+  label?: string;
+  validity_days?: number;
+  amount_paid?: number;
+}
+
+/** Réponse de la génération : les codes en clair, une seule fois. */
+export interface BillingCodesGenerated {
+  codes: { id: number; code: string; hint: string }[];
+  plan: { code: string; durationMonths: number; price: number; currency: string } | null;
+  expiresAt: string;
 }
 
 // ── Vérification d'identité ──
