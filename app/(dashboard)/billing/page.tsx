@@ -285,6 +285,11 @@ const FIELDS = [
     label: "Conservation après échéance", min: 0, max: 365,
     help: "Délai avant suppression des données des fonctionnalités payantes. La sauvegarde reste toujours restaurable.",
   },
+  {
+    key: "codes_per_payment" as const, from: "codesPerPayment" as const,
+    label: "Codes par paiement", min: 1, max: 10, unit: "codes", fallback: 3,
+    help: "Régime essai : nombre de codes remis à qui paie sur le site (le sien, et les autres à offrir à ses proches). Ne change pas les codes déjà émis.",
+  },
 ];
 
 type FieldKey = (typeof FIELDS)[number]["key"];
@@ -312,6 +317,7 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
     default_grace_days: String(data.settings.defaultGraceDays),
     trial_days: String(data.settings.trialDays),
     retention_days: String(data.settings.retentionDays),
+    codes_per_payment: String(data.settings.codesPerPayment ?? 3),
   });
   const [values, setValues] = useState(initial);
   useEffect(() => setValues(initial()), [data.settings.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -320,18 +326,19 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
   for (const f of FIELDS) {
     const n = Number(values[f.key]);
     if (!/^\d+$/.test(values[f.key]) || n < f.min || n > f.max) {
-      errors[f.key] = `Entre ${f.min} et ${f.max} jours`;
+      errors[f.key] = `Entre ${f.min} et ${f.max} ${"unit" in f ? f.unit : "jours"}`;
     }
   }
   const payUrlErr = trial ? payUrlError(payUrl) : null;
   const payUrlDirty = trial && payUrl.trim() !== (data.settings.payUrl ?? "");
-  const dirty = FIELDS.some((f) => Number(values[f.key]) !== data.settings[f.from]) || payUrlDirty;
+  const current = (f: (typeof FIELDS)[number]) => data.settings[f.from] ?? ("fallback" in f ? f.fallback : undefined);
+  const dirty = FIELDS.some((f) => Number(values[f.key]) !== current(f)) || payUrlDirty;
   const valid = Object.keys(errors).length === 0 && !payUrlErr;
 
   const save = () => {
     const patch: Record<string, number | string | null> = {};
     for (const f of FIELDS) {
-      if (Number(values[f.key]) !== data.settings[f.from]) patch[f.key] = Number(values[f.key]);
+      if (Number(values[f.key]) !== current(f)) patch[f.key] = Number(values[f.key]);
     }
     if (payUrlDirty) patch.pay_url = payUrl.trim() || null;
     update.mutate(patch, {
@@ -346,7 +353,7 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
         <CardTitle className="text-base">Réglages</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {FIELDS.map((f) => (
             <div key={f.key} className="space-y-1.5">
               <label htmlFor={f.key} className="text-sm font-medium">{f.label}</label>
@@ -361,7 +368,7 @@ function SettingsCard({ data, canEdit }: { data: BillingSettingsResponse; canEdi
                   className={cn("pr-14 tabular-nums", errors[f.key] && "border-red-400 focus-visible:ring-red-400")}
                 />
                 <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-zinc-400">
-                  jours
+                  {"unit" in f ? f.unit : "jours"}
                 </span>
               </div>
               <p className={cn("text-xs leading-snug", errors[f.key] ? "text-red-500" : "text-zinc-500 dark:text-zinc-400")}>

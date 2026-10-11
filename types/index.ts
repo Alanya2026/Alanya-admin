@@ -895,6 +895,8 @@ export interface BillingSettingsRow {
   retentionDays: number;
   /** Site de paiement (https). Nul : le bouton de l'application est grisé. */
   payUrl?: string | null;
+  /** Codes d'activation remis pour un paiement (absent avant la migration 096 : 3). */
+  codesPerPayment?: number;
   updatedBy: number | null;
   updatedAt: string | null;
 }
@@ -922,6 +924,8 @@ export interface BillingSettingsPatch {
   retention_days?: number;
   /** Adresse https du site de paiement ; null ou vide l'efface. */
   pay_url?: string | null;
+  /** Codes remis pour un paiement, de 1 à 10. */
+  codes_per_payment?: number;
 }
 
 export interface BillingFeature {
