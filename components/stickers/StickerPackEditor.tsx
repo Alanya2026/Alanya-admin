@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -21,6 +22,7 @@ import {
   ImagePlus,
   Loader2,
   Lock,
+  Play,
   Rocket,
   Save,
   Star,
@@ -47,6 +49,7 @@ import {
   useDeleteSticker,
   usePublishStickerPack,
   useStickerPack,
+  useStickerSettings,
   useUpdateSticker,
   useUpdateStickerPack,
   useUploadStickerFiles,
@@ -58,12 +61,21 @@ import {
   type Translations,
 } from "@/lib/content-locales";
 import {
+  detailAnimation,
+  estAnime,
+  estWebpAnime,
   fallbackPlaceholder,
   formatOctets,
+  messageErreurUpload,
+  STICKER_ANIMATED_MAX_BYTES,
+  STICKER_ANIMATED_MAX_FRAMES,
+  STICKER_ANIMATED_MAX_MS,
   STICKER_FILE_ACCEPT,
   STICKER_PACK_MIN,
   STICKER_PACK_STATUS_LABEL,
   STICKER_PACK_STATUS_STYLE,
+  STICKER_STATIC_INPUT_MAX_BYTES,
+  STICKER_STATIC_MAX_BYTES,
   STICKER_UPLOAD_MAX,
   STICKER_VISIBILITY_LABEL,
 } from "@/lib/sticker-labels";
@@ -120,6 +132,12 @@ function serveurIncomplet(e: unknown): StickerPackIncomplete | null {
   return data?.code === "STICKER_PACK_INCOMPLETE" ? data : null;
 }
 
+/** Fichier choisi, avec son caractère animé lu dans l'en-tête WebP. */
+interface FichierChoisi {
+  file: File;
+  anime: boolean;
+}
+
 const erreurServeur = (e: unknown): string | undefined =>
   (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
   (e instanceof Error ? e.message : undefined);
@@ -138,18 +156,20 @@ export function StickerPackEditor({ id }: { id: number }) {
   const removeSticker = useDeleteSticker(id);
   const publish = usePublishStickerPack(id);
   const archive = useArchiveStickerPack(id);
+  const settings = useStickerSettings();
 
   const [lang, setLang] = useState<ContentLocale>("fr");
   const [form, setForm] = useState<FormState | null>(null);
   const initialise = useRef(false);
   const [aSupprimer, setASupprimer] = useState<StickerPackSticker | null>(null);
-  const [fichiers, setFichiers] = useState<File[]>([]);
+  const [fichiers, setFichiers] = useState<FichierChoisi[]>([]);
   const [emojiLot, setEmojiLot] = useState("");
   const [progression, setProgression] = useState(0);
   const fichierRef = useRef<HTMLInputElement>(null);
 
   const pack = data?.pack;
   const stickers = data?.stickers ?? [];
+  const nbAnimes = stickers.filter(estAnime).length;
 
   // Première charge seulement : un rafraîchissement (après envoi ou
   // publication) ne doit pas effacer une saisie en cours dans la fiche.
@@ -232,44 +252,62 @@ export function StickerPackEditor({ id }: { id: number }) {
     });
   }
 
-  function ajouterFichiers(liste: FileList | null) {
+  async function ajouterFichiers(liste: FileList | null) {
     if (!liste) return;
+    const fichiersChoisis = Array.from(liste);
+    if (fichierRef.current) fichierRef.current.value = "";
     const ajoutes = [...fichiers];
-    let refuse = 0;
-    for (const f of Array.from(liste)) {
+    const refus = { format: 0, plafond: 0, poidsAnime: 0, poidsStatique: 0 };
+    for (const f of fichiersChoisis) {
       if (ajoutes.length >= STICKER_UPLOAD_MAX) {
-        refuse += 1;
+        refus.plafond += 1;
         continue;
       }
       if (!["image/png", "image/webp"].includes(f.type)) {
-        refuse += 1;
+        refus.format += 1;
         continue;
       }
-      ajoutes.push(f);
+      const anime = await estWebpAnime(f);
+      if (anime && f.size > STICKER_ANIMATED_MAX_BYTES) {
+        refus.poidsAnime += 1;
+        continue;
+      }
+      if (!anime && f.size > STICKER_STATIC_INPUT_MAX_BYTES) {
+        refus.poidsStatique += 1;
+        continue;
+      }
+      ajoutes.push({ file: f, anime });
     }
     setFichiers(ajoutes);
-    if (refuse > 0) {
-      addToast({
-        title: "Fichiers ignorés",
-        description: `${refuse} fichier(s) : PNG ou WebP attendus, ${STICKER_UPLOAD_MAX} au plus par envoi.`,
-        variant: "error",
-      });
+    const motifs: string[] = [];
+    if (refus.format) motifs.push(`${refus.format} : PNG ou WebP (statique ou animé) attendus`);
+    if (refus.poidsAnime) {
+      motifs.push(`${refus.poidsAnime} : WebP animé au-delà de ${formatOctets(STICKER_ANIMATED_MAX_BYTES)}`);
     }
-    if (fichierRef.current) fichierRef.current.value = "";
+    if (refus.poidsStatique) {
+      motifs.push(`${refus.poidsStatique} : fichier statique au-delà de ${formatOctets(STICKER_STATIC_INPUT_MAX_BYTES)}`);
+    }
+    if (refus.plafond) motifs.push(`${refus.plafond} : plafond de ${STICKER_UPLOAD_MAX} par envoi atteint`);
+    if (motifs.length) {
+      addToast({ title: "Fichiers ignorés", description: motifs.join(" ; ") + ".", variant: "error" });
+    }
   }
 
   function envoyer() {
     if (!fichiers.length) return;
     upload.mutate(
-      { files: fichiers, emoji: emojiLot, onProgress: setProgression },
+      { files: fichiers.map((f) => f.file), emoji: emojiLot, onProgress: setProgression },
       {
         onSuccess: (crees) => {
           const reutilises = crees.filter((s) => s.reutilise).length;
+          const animes = crees.filter(estAnime).length;
+          const notes = [
+            reutilises ? `${reutilises} fichier(s) déjà présent(s), réutilisé(s) sans réenvoi.` : "",
+            animes ? `${animes} animé(s).` : "",
+          ].filter(Boolean);
           addToast({
             title: `${crees.length} sticker${crees.length > 1 ? "s" : ""} ajouté${crees.length > 1 ? "s" : ""}`,
-            description: reutilises
-              ? `${reutilises} fichier(s) déjà présent(s), réutilisé(s) sans réenvoi.`
-              : undefined,
+            description: notes.length ? notes.join(" ") : undefined,
             variant: "success",
           });
           setFichiers([]);
@@ -278,7 +316,7 @@ export function StickerPackEditor({ id }: { id: number }) {
         },
         onError: (e) => {
           setProgression(0);
-          addToast({ title: "Envoi refusé", description: erreurServeur(e), variant: "error" });
+          addToast({ title: "Envoi refusé", description: messageErreurUpload(e), variant: "error" });
         },
       },
     );
@@ -391,6 +429,13 @@ export function StickerPackEditor({ id }: { id: number }) {
               label={`Au moins ${STICKER_PACK_MIN} stickers (${stickers.length}/${STICKER_PACK_MIN})`}
             />
           </ul>
+
+          {nbAnimes > 0 && (
+            <AnimatedSwitchNote
+              nbAnimes={nbAnimes}
+              ouvert={settings.data ? settings.data.animatedEnabled === 1 : null}
+            />
+          )}
 
           {!canPublish ? (
             <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-400">
@@ -562,7 +607,15 @@ export function StickerPackEditor({ id }: { id: number }) {
             </span>
           </CardTitle>
           <CardDescription>
-            PNG ou WebP 512×512, 1 Mo au plus chacun. Le serveur vérifie, ré-encode et déduplique.
+            <span className="block">
+              Statique : PNG ou WebP 512×512, alpha obligatoire, 1 Mo au plus en entrée ; le serveur
+              ré-encode à {formatOctets(STICKER_STATIC_MAX_BYTES)} au plus.
+            </span>
+            <span className="block">
+              Animé : WebP final 512×512, {formatOctets(STICKER_ANIMATED_MAX_BYTES)} au plus,{" "}
+              {STICKER_ANIMATED_MAX_FRAMES} images et {STICKER_ANIMATED_MAX_MS / 1000} s au plus, en
+              boucle. Le serveur vérifie, ré-encode et déduplique.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -624,13 +677,15 @@ export function StickerPackEditor({ id }: { id: number }) {
 
               {fichiers.length > 0 && (
                 <ul className="flex flex-wrap gap-2">
-                  {fichiers.map((f, i) => (
+                  {fichiers.map(({ file: f, anime }, i) => (
                     <li
                       key={`${f.name}-${i}`}
                       className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs dark:bg-zinc-800"
                     >
                       <ImagePlus className="h-3.5 w-3.5 text-zinc-400" />
                       <span className="max-w-[10rem] truncate">{f.name}</span>
+                      {anime && <AnimeBadge />}
+                      <span className="tabular-nums text-zinc-400">{formatOctets(f.size)}</span>
                       <button
                         type="button"
                         aria-label={`Retirer ${f.name}`}
@@ -700,6 +755,61 @@ export function StickerPackEditor({ id }: { id: number }) {
   );
 }
 
+/** Pastille « Animé », identique sur la vignette, la liste et les fichiers à envoyer. */
+function AnimeBadge({ className, precision }: { className?: string; precision?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-md bg-fuchsia-100 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300",
+        className,
+      )}
+    >
+      <Play className="h-2.5 w-2.5 fill-current" />
+      Animé{precision ? ` · ${precision}` : ""}
+    </span>
+  );
+}
+
+/**
+ * Rappel de publication, non bloquant : les stickers animés n'atteignent les
+ * utilisateurs que si `animated_enabled` est ouvert (page Réglages). Fermé, le
+ * serveur les omet du pack et refuse leur envoi (contrat §4c).
+ */
+function AnimatedSwitchNote({ nbAnimes, ouvert }: { nbAnimes: number; ouvert: boolean | null }) {
+  const lien = (
+    <Link href="/stickers/reglages" className="font-medium underline underline-offset-2">
+      Réglages
+    </Link>
+  );
+  const titre = `${nbAnimes} sticker${nbAnimes > 1 ? "s" : ""} animé${nbAnimes > 1 ? "s" : ""} dans ce pack`;
+  if (ouvert === true) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-400">
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>
+          {titre}. L&apos;interrupteur « Stickers animés » est <strong>ouvert</strong> : les utilisateurs les voient une fois le pack publié.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-400">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>
+        {titre}.{" "}
+        {ouvert === false ? (
+          <>
+            L&apos;interrupteur « Stickers animés » est <strong>fermé</strong> : tant qu&apos;il l&apos;est, les animés sont omis du pack côté application et leur envoi est refusé.
+          </>
+        ) : (
+          <>Vérifiez que l&apos;interrupteur « Stickers animés » est ouvert : sinon les utilisateurs ne les voient pas.</>
+        )}{" "}
+        Il se règle dans {lien} (super-admin).
+      </p>
+    </div>
+  );
+}
+
 function ChecklistItem({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li className="flex items-center gap-2 text-sm">
@@ -745,6 +855,14 @@ function StickerTile({
   const [emoji, setEmoji] = useState(sticker.emoji);
   useEffect(() => setEmoji(sticker.emoji), [sticker.emoji]);
   const retire = sticker.assetStatus === 1;
+  const anime = estAnime(sticker);
+  const detail = anime ? detailAnimation(sticker) : "";
+  // Statique par défaut ; l'animation se joue au survol ou au clic (bascule),
+  // ce qui la relance depuis la première image à chaque fois.
+  const [survol, setSurvol] = useState(false);
+  const [lecture, setLecture] = useState(false);
+  const joue = anime && (survol || lecture);
+  const imageStatique = sticker.thumbUrl || sticker.url;
 
   return (
     <div
@@ -764,13 +882,39 @@ function StickerTile({
         </div>
       )}
 
-      <div className="flex aspect-square items-center justify-center bg-[linear-gradient(45deg,#f4f4f5_25%,transparent_25%,transparent_75%,#f4f4f5_75%),linear-gradient(45deg,#f4f4f5_25%,transparent_25%,transparent_75%,#f4f4f5_75%)] bg-[length:16px_16px] bg-[position:0_0,8px_8px] p-3 dark:bg-zinc-800">
-        <img
-          src={sticker.thumbUrl || sticker.url}
-          alt={sticker.emoji || "sticker"}
-          loading="lazy"
-          className="max-h-full max-w-full object-contain"
-        />
+      <div className="relative flex aspect-square items-center justify-center bg-[linear-gradient(45deg,#f4f4f5_25%,transparent_25%,transparent_75%,#f4f4f5_75%),linear-gradient(45deg,#f4f4f5_25%,transparent_25%,transparent_75%,#f4f4f5_75%)] bg-[length:16px_16px] bg-[position:0_0,8px_8px] p-3 dark:bg-zinc-800">
+        {anime ? (
+          <button
+            type="button"
+            aria-pressed={lecture}
+            aria-label={`${lecture ? "Arrêter" : "Lire"} l'animation du sticker ${sticker.position}`}
+            title={lecture ? "Cliquer pour arrêter l'animation" : "Survoler ou cliquer pour lire l'animation"}
+            onMouseEnter={() => setSurvol(true)}
+            onMouseLeave={() => setSurvol(false)}
+            onClick={() => setLecture((v) => !v)}
+            className="flex h-full w-full items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <img
+              src={joue ? sticker.url : imageStatique}
+              alt={sticker.emoji || "sticker"}
+              loading="lazy"
+              className="max-h-full max-w-full object-contain"
+            />
+          </button>
+        ) : (
+          <img
+            src={imageStatique}
+            alt={sticker.emoji || "sticker"}
+            loading="lazy"
+            className="max-h-full max-w-full object-contain"
+          />
+        )}
+        {anime && (
+          <AnimeBadge
+            className="absolute bottom-2 left-2"
+            precision={sticker.bytes != null ? formatOctets(sticker.bytes) : undefined}
+          />
+        )}
       </div>
 
       <div className="space-y-2 p-2.5">
@@ -795,6 +939,13 @@ function StickerTile({
             {sticker.bytes != null ? ` · ${formatOctets(sticker.bytes)}` : ""}
           </span>
         </div>
+
+        {anime && (
+          <p className="text-[11px] tabular-nums text-fuchsia-700 dark:text-fuchsia-300">
+            {detail || "Durée et nombre d'images non communiqués"}
+            <span className="text-zinc-400"> · lecture au survol ou au clic</span>
+          </p>
+        )}
 
         {retire && (
           <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-500">

@@ -105,6 +105,11 @@ function PackCard({ pack }: { pack: StickerPackRow }) {
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           {pack.stickerCount} sticker{pack.stickerCount > 1 ? "s" : ""}
           {pack.totalBytes != null && ` · ${formatOctets(pack.totalBytes)}`}
+          {(pack.animatedCount ?? 0) > 0 && (
+            <span className="ml-1.5 rounded-md bg-fuchsia-100 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300">
+              {pack.animatedCount} animé{(pack.animatedCount ?? 0) > 1 ? "s" : ""}
+            </span>
+          )}
           {incomplet && (
             <span className="ml-1 text-amber-600 dark:text-amber-400">
               — minimum {STICKER_PACK_MIN} pour publier

@@ -1269,6 +1269,8 @@ export interface StickerPackRow {
   stickerCount: number;
   /** Poids cumulé des fichiers actifs, en octets. */
   totalBytes?: number;
+  /** Nombre de stickers animés du pack ; optionnel (ignoré s'il est absent). */
+  animatedCount?: number;
 }
 
 export interface StickerPackSticker {
@@ -1283,7 +1285,12 @@ export interface StickerPackSticker {
   width: number | null;
   height: number | null;
   bytes: number | null;
-  animated: 0 | 1;
+  /** 1 = WebP animé (`sticker_asset.animated`). Absent chez un ancien serveur : statique. */
+  animated?: 0 | 1 | boolean;
+  /** Nombre d'images ; optionnel, fourni seulement si le serveur le connaît. */
+  frames?: number | null;
+  /** Durée d'un tour, en millisecondes ; optionnelle, comme `frames`. */
+  durationMs?: number | null;
 }
 
 export interface StickerPackDetail {
@@ -1326,6 +1333,10 @@ export interface StickerUploaded {
   bytes: number;
   /** true si le fichier existait déjà (déduplication par propriétaire). */
   reutilise: boolean;
+  /** Le fichier déposé est un WebP animé ; optionnel. */
+  animated?: 0 | 1 | boolean;
+  frames?: number | null;
+  durationMs?: number | null;
 }
 
 /** Réglages de lancement — GET /admin/sticker-settings. */
