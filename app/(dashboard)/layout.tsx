@@ -22,6 +22,7 @@ import {
   ScrollText,
   Flag,
   CreditCard,
+  Sticker,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -53,6 +54,10 @@ const navItemsAll = [
   { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
   { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },
   { href: "/welcome", label: "Bienvenue", icon: HandHeart, permission: "welcome.read" },
+  // Catalogue officiel : lecture par tout administrateur (stickers.read) ;
+  // l'écriture, la publication et la modération gardent leurs permissions
+  // propres, vérifiées par chaque page et par le serveur.
+  { href: "/stickers", label: "Stickers", icon: Sticker, permission: "stickers.read" },
   // Gardée sur une permission d'écriture, à dessein : la page était réservée au
   // super-admin, et la lecture seule des purges ne suffisait pas à l'ouvrir.
   { href: "/purges", label: "Purges", icon: Eraser, permission: "purges.settings" },

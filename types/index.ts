@@ -1230,3 +1230,145 @@ export interface UserBillingResponse {
   periods: BillingPeriodRow[];
   payments: BillingPaymentRow[];
 }
+
+// ── Stickers (type de message 10) ──
+//
+// Réponses de /admin/sticker-*, déjà converties en camelCase par lib/api.ts.
+// Les clés de langue (fr, en, zh) n'ont pas de `_` : elles traversent la
+// conversion intactes. Les corps envoyés partent en snake_case explicite, comme
+// le serveur les lit (cf. CONTRAT-STICKERS.md §7).
+
+/** `sticker_pack.status` : 0 brouillon, 1 publié, 2 archivé. */
+export type StickerPackStatus = 0 | 1 | 2;
+
+/** `sticker_pack.visibility` : 0 officiel, 1 privé, 2 lien. */
+export type StickerPackVisibility = 0 | 1 | 2;
+
+/** `sticker_asset.status` : 0 actif, 1 retiré. */
+export type StickerAssetStatus = 0 | 1;
+
+export interface StickerPackRow {
+  id: number;
+  code: string;
+  nameI18n: Translations;
+  descriptionI18n: Translations | null;
+  author: string | null;
+  /** Sticker choisi comme vignette ; null tant qu'aucun n'est désigné. */
+  coverStickerId: number | null;
+  /** Vignette déjà résolue par le serveur, ou null. */
+  coverUrl: string | null;
+  isPremium: 0 | 1;
+  visibility: StickerPackVisibility;
+  status: StickerPackStatus;
+  shareToken: string | null;
+  sortOrder: number;
+  version: number;
+  publishedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  stickerCount: number;
+}
+
+export interface StickerPackSticker {
+  id: number;
+  position: number;
+  emoji: string;
+  nameI18n: Translations;
+  assetId: number;
+  assetStatus: StickerAssetStatus;
+  url: string;
+  thumbUrl: string | null;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  animated: 0 | 1;
+}
+
+export interface StickerPackDetail {
+  pack: StickerPackRow;
+  stickers: StickerPackSticker[];
+}
+
+/** Corps de POST /admin/sticker-packs — snake_case, comme le lit le serveur. */
+export interface StickerPackCreatePayload {
+  /** Laisser vide : le serveur en dérive un depuis le nom. */
+  code?: string;
+  name_i18n: Translations;
+  description_i18n?: Translations | null;
+  author?: string | null;
+  is_premium?: boolean;
+  sort_order?: number;
+}
+
+/** Corps de PATCH /admin/sticker-packs/:id. */
+export interface StickerPackPatchPayload {
+  name_i18n?: Translations;
+  description_i18n?: Translations | null;
+  author?: string | null;
+  is_premium?: boolean;
+  sort_order?: number;
+  cover_sticker_id?: number | null;
+}
+
+/** Corps de PATCH /admin/stickers/:id. */
+export interface StickerPatchPayload {
+  emoji?: string;
+  position?: number;
+  name_i18n?: Translations;
+}
+
+/** Un sticker créé par un envoi multiple — POST /admin/sticker-packs/:id/stickers. */
+export interface StickerUploaded {
+  id: number;
+  position: number;
+  bytes: number;
+  /** true si le fichier existait déjà (déduplication par propriétaire). */
+  reutilise: boolean;
+}
+
+/** Réglages de lancement — GET /admin/sticker-settings. */
+export interface StickerSettings {
+  id: number;
+  enabled: 0 | 1;
+  creationEnabled: 0 | 1;
+  animatedEnabled: 0 | 1;
+  /** Identifiants ouverts en plus de la cohorte en pourcentage. */
+  cohortIds: number[] | null;
+  cohortPercent: number;
+  minAppVersion: string | null;
+  updatedBy: number | null;
+  updatedAt: string | null;
+}
+
+/** Corps de PUT /admin/sticker-settings — sous-ensemble, en snake_case. */
+export interface StickerSettingsPatch {
+  enabled?: boolean;
+  creation_enabled?: boolean;
+  animated_enabled?: boolean;
+  cohort_ids?: number[] | null;
+  cohort_percent?: number;
+  min_app_version?: string | null;
+}
+
+/** Un signalement de sticker perso — GET /admin/sticker-reports. */
+export interface StickerReportRow {
+  id: number;
+  assetId: number;
+  reporterId: number;
+  /** Motif TINYINT côté base ; à défaut une chaîne, affichée telle quelle. */
+  reason: number | string;
+  status: number;
+  createdAt: string | null;
+  assetStatus: StickerAssetStatus;
+  url: string;
+  thumbUrl: string | null;
+  reporterNom: string | null;
+  reporterPseudo: string | null;
+}
+
+/** Corps d'un 422 STICKER_PACK_INCOMPLETE à la publication. */
+export interface StickerPackIncomplete {
+  error: string;
+  code: "STICKER_PACK_INCOMPLETE";
+  missing: string[];
+}
