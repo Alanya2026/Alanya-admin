@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Caveat } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Providers } from "./providers";
 import "./globals.css";
 
-// Polices locales (Geist) — aucun appel réseau, build reproductible hors-ligne / CI.
+// Polices locales (Geist, Caveat) — aucun appel réseau, build reproductible hors-ligne / CI.
 const sans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-sans",
@@ -13,9 +12,10 @@ const sans = localFont({
   display: "swap",
 });
 
-const handwriting = Caveat({
-  subsets: ["latin"],
+const handwriting = localFont({
+  src: "./fonts/CaveatVF.woff2",
   variable: "--font-handwriting",
+  weight: "400 700",
   display: "swap",
 });
 
