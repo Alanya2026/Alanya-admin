@@ -111,9 +111,10 @@ export function stickerReportStatusLabel(status: number): string {
   }
 }
 
-/** Poids lisible d'un sticker ; « — » quand le serveur ne le donne pas. */
+/** Poids lisible (octets sous 1 Ko, sinon Ko) ; « — » quand le serveur ne le donne pas. */
 export function formatOctets(bytes: number | null | undefined): string {
   if (bytes == null) return "—";
   if (bytes < 1024) return `${bytes} o`;
-  return `${(bytes / 1024).toFixed(0)} Ko`;
+  const ko = bytes / 1024;
+  return `${ko.toLocaleString("fr-FR", { maximumFractionDigits: ko < 100 ? 1 : 0 })} Ko`;
 }

@@ -1267,6 +1267,8 @@ export interface StickerPackRow {
   createdAt: string | null;
   updatedAt: string | null;
   stickerCount: number;
+  /** Poids cumulé des fichiers actifs, en octets. */
+  totalBytes?: number;
 }
 
 export interface StickerPackSticker {

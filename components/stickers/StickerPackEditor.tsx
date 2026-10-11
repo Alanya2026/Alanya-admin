@@ -361,6 +361,7 @@ export function StickerPackEditor({ id }: { id: number }) {
         </div>
         <p className="mt-1 font-mono text-xs text-zinc-400">
           {data.pack.code} · {STICKER_VISIBILITY_LABEL[data.pack.visibility]} · v{data.pack.version}
+          {data.pack.totalBytes != null && ` · ${formatOctets(data.pack.totalBytes)}`}
         </p>
       </div>
 
