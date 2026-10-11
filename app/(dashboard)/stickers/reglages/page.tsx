@@ -3,13 +3,14 @@
 /**
  * Réglages de lancement des stickers.
  *
- * Trois interrupteurs (lecture, création, animé), l'ouverture par cohorte et la
- * version minimale. Réservé au super-admin (`stickers.settings`) : les autres
- * administrateurs voient l'état en lecture seule.
+ * Trois interrupteurs (catalogue, création, animé) et la version minimale.
+ * Réservé au super-admin (`stickers.settings`) : les autres administrateurs
+ * voient l'état en lecture seule. L'ouverture est un interrupteur simple :
+ * `enabled` ouvre à tout le monde, sans cohorte.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Info, Loader2, Lock, Save, SlidersHorizontal, Undo2 } from "lucide-react";
+import { Loader2, Lock, Save, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +25,10 @@ import { useSaveStickerSettings, useStickerSettings } from "@/hooks/useStickers"
 import { cn } from "@/lib/utils";
 import type { StickerSettings, StickerSettingsPatch } from "@/types";
 
-const PRESETS = [0, 1, 10, 50, 100];
-
 interface FormState {
   enabled: boolean;
   creationEnabled: boolean;
   animatedEnabled: boolean;
-  cohortPercent: string;
   minAppVersion: string;
 }
 
@@ -39,7 +37,6 @@ function fromServer(s: StickerSettings): FormState {
     enabled: s.enabled === 1,
     creationEnabled: s.creationEnabled === 1,
     animatedEnabled: s.animatedEnabled === 1,
-    cohortPercent: String(s.cohortPercent ?? 0),
     minAppVersion: s.minAppVersion ?? "",
   };
 }
@@ -63,20 +60,16 @@ export default function StickerSettingsPage() {
   const serveur = useMemo(() => (data ? fromServer(data) : null), [data]);
   const dirty = Boolean(form && serveur && JSON.stringify(form) !== JSON.stringify(serveur));
 
-  const pourcentage = Number(form?.cohortPercent);
-  const pourcentageValide = Number.isInteger(pourcentage) && pourcentage >= 0 && pourcentage <= 100;
-
   function patch(p: Partial<FormState>) {
     setForm((f) => (f ? { ...f, ...p } : f));
   }
 
   function enregistrer() {
-    if (!form || !serveur || !pourcentageValide) return;
+    if (!form || !serveur) return;
     const payload: StickerSettingsPatch = {};
     if (form.enabled !== serveur.enabled) payload.enabled = form.enabled;
     if (form.creationEnabled !== serveur.creationEnabled) payload.creation_enabled = form.creationEnabled;
     if (form.animatedEnabled !== serveur.animatedEnabled) payload.animated_enabled = form.animatedEnabled;
-    if (form.cohortPercent !== serveur.cohortPercent) payload.cohort_percent = pourcentage;
     if (form.minAppVersion.trim() !== serveur.minAppVersion.trim()) {
       payload.min_app_version = form.minAppVersion.trim() || null;
     }
@@ -97,7 +90,7 @@ export default function StickerSettingsPage() {
   return (
     <div className="space-y-6">
       <StickersPageHeader
-        subtitle="Ce qui est ouvert, pour qui, et à partir de quelle version de l'application."
+        subtitle="Ce qui est ouvert et à partir de quelle version de l'application."
         refreshing={save.isPending}
       />
 
@@ -155,61 +148,15 @@ export default function StickerSettingsPage() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <SlidersHorizontal className="h-4 w-4 text-zinc-400" />
-                Ouverture progressive
-              </CardTitle>
+              <CardTitle className="text-base">Version minimale de l&apos;application</CardTitle>
               <CardDescription>
-                Un pourcentage à 0 sans liste d&apos;équipe ferme l&apos;accès à tout le monde, même
-                l&apos;interrupteur ouvert.
+                Comparée par le serveur, mais rien n&apos;est encore bloqué côté application :
+                mesure seule.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="cohort-percent">Cohorte servie (%)</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    id="cohort-percent"
-                    inputMode="numeric"
-                    value={form.cohortPercent}
-                    disabled={!canEdit}
-                    aria-invalid={!pourcentageValide}
-                    className={cn("w-24 tabular-nums", !pourcentageValide && "border-red-400 focus-visible:ring-red-400")}
-                    onChange={(e) => patch({ cohortPercent: e.target.value.trim() })}
-                  />
-                  <div role="group" aria-label="Palier de cohorte" className="flex flex-wrap gap-1.5">
-                    {PRESETS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        disabled={!canEdit}
-                        aria-pressed={Number(form.cohortPercent) === p}
-                        onClick={() => patch({ cohortPercent: String(p) })}
-                        className={cn(
-                          "rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          Number(form.cohortPercent) === p
-                            ? "border-indigo-500 bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"
-                            : "border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-700",
-                        )}
-                      >
-                        {p} %
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {!pourcentageValide && <p className="text-xs text-red-500">Entier entre 0 et 100 attendu.</p>}
-              </div>
-
-              {data.cohortIds && data.cohortIds.length > 0 && (
-                <p className="flex items-start gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {data.cohortIds.length} compte(s) d&apos;équipe ouverts nommément, en plus du pourcentage.
-                </p>
-              )}
-
               <div className="space-y-1.5">
-                <Label htmlFor="min-version">Version minimale de l&apos;application</Label>
+                <Label htmlFor="min-version">Version minimale</Label>
                 <Input
                   id="min-version"
                   value={form.minAppVersion}
@@ -219,14 +166,11 @@ export default function StickerSettingsPage() {
                   className="w-48 font-mono"
                   onChange={(e) => patch({ minAppVersion: e.target.value })}
                 />
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Mesure seule pour l&apos;instant : la version est comparée, mais rien n&apos;est encore bloqué côté application.
-                </p>
               </div>
 
               {canEdit && (
                 <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                  <Button onClick={enregistrer} disabled={!dirty || !pourcentageValide || save.isPending} variant="outline">
+                  <Button onClick={enregistrer} disabled={!dirty || save.isPending} variant="outline">
                     {save.isPending ? (
                       <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                     ) : (

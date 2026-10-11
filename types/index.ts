@@ -1332,9 +1332,6 @@ export interface StickerSettings {
   enabled: 0 | 1;
   creationEnabled: 0 | 1;
   animatedEnabled: 0 | 1;
-  /** Identifiants ouverts en plus de la cohorte en pourcentage. */
-  cohortIds: number[] | null;
-  cohortPercent: number;
   minAppVersion: string | null;
   updatedBy: number | null;
   updatedAt: string | null;
@@ -1345,8 +1342,6 @@ export interface StickerSettingsPatch {
   enabled?: boolean;
   creation_enabled?: boolean;
   animated_enabled?: boolean;
-  cohort_ids?: number[] | null;
-  cohort_percent?: number;
   min_app_version?: string | null;
 }
 
