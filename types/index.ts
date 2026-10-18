@@ -1284,7 +1284,14 @@ export interface SafeboxAdmin {
     pendingUploads: number;
     shares30d: number;
     shareDownloads30d: number;
+    /** Fichiers dont le contenu manquait chez MEGA au dernier rapprochement ; null sans la migration 106. */
+    lostFiles: number | null;
   };
+  /** Les 50 plus récents de ces fichiers, pour prévenir leurs propriétaires. */
+  lost: Array<{
+    fileId: number; name: string; family: SafeboxFamily; alanyaID: number;
+    ownerName: string | null; plainBytes: number; lostAt: string;
+  }> | null;
   byFamily: Record<SafeboxFamily, { files: number; bytes: number }>;
   topUsers: Array<{ alanyaID: number; name: string | null; phone: string | null; files: number; bytes: number }>;
   settings: SafeboxAdminSettings;
@@ -1299,4 +1306,30 @@ export interface SafeboxSettingsPayload {
   max_folders?: number;
   share_downloads_per_day?: number;
   extensions?: Record<SafeboxFamily, string[]> | null;
+}
+
+/** GET /admin/reports/:id/safebox — le fichier du coffre d'un signalement. */
+export interface ReportSafebox {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  name: string;
+  mime: string | null;
+  family: SafeboxFamily;
+  plainBytes: number;
+  createdAt: string;
+  /** Partage retiré par la modération. */
+  revokedAt: string | null;
+  /** Plus aucun fichier en base (supprimé par l'expéditeur, ou partout par la modération). */
+  fileDeleted: boolean;
+  trashed: boolean;
+  /** Coffres qui le contiennent (expéditeur et copies enregistrées). */
+  vaults: number;
+  /** Partages encore actifs de ce contenu, tous expéditeurs confondus. */
+  activeShares: number;
+  /** Destinataires qui l'ont reçu ; null sans la migration 104. */
+  recipients: number | null;
+  /** Aperçu déchiffré par le serveur (data:image/…), ou null. */
+  preview: string | null;
+  previewError: boolean;
 }

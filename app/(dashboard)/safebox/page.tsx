@@ -15,7 +15,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  Cloud, FileText, Film, HardDrive, Images, Loader2, Music, RefreshCw,
+  Cloud, FileText, FileWarning, Film, HardDrive, Images, Loader2, Music, RefreshCw,
   Share2, ShieldAlert, Trash2, Upload, Vault,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -345,6 +345,7 @@ export default function SafeboxPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Cloud className="h-3.5 w-3.5" /> rapprochement MEGA : {dateLongue(data.settings.lastReconcileAt)}
+                    {data.totals.lostFiles === 0 ? " · aucun fichier perdu" : ""}
                   </span>
                 </div>
               </CardContent>
@@ -385,6 +386,50 @@ export default function SafeboxPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Fichiers dont le contenu a disparu chez MEGA (rapprochement
+              hebdomadaire, migration 106). Rien ne se récupère : la liste sert
+              à prévenir leurs propriétaires, qui ont peut-être l'original. */}
+          {data.totals.lostFiles != null && data.totals.lostFiles > 0 && (
+            <Card className="border-0 shadow-sm bg-white dark:bg-zinc-900">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileWarning className="h-4 w-4 text-red-500" />
+                  Fichiers perdus chez MEGA : {n(data.totals.lostFiles)}
+                </CardTitle>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Leur contenu manquait au dernier rapprochement. L&apos;application les affiche « endommagés » ;
+                  un contenu retrouvé la semaine suivante est démarqué tout seul.
+                </p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fichier</TableHead>
+                      <TableHead>Propriétaire</TableHead>
+                      <TableHead className="text-right">Taille</TableHead>
+                      <TableHead className="text-right">Constaté</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(data.lost ?? []).map((l) => (
+                      <TableRow key={l.fileId}>
+                        <TableCell className="max-w-[16rem] truncate">{l.name}</TableCell>
+                        <TableCell>
+                          <Link href={`/users/${l.alanyaID}`} className="hover:underline">
+                            {l.ownerName || `#${l.alanyaID}`}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{octets(l.plainBytes)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{dateLongue(l.lostAt)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           <CarteReglages reglages={data.settings} modifiable={superAdmin} />
         </>

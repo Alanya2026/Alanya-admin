@@ -134,7 +134,9 @@ function resumeStats(p: PurgeSetting): { total: number; lignes: string[] } {
         `${n(corbeille)} élément(s) en corbeille depuis plus de 30 jours`,
         `${n(abandons)} envoi(s) abandonné(s), ${n(orphelins)} fichier(s) sans propriétaire chez MEGA`,
         `stocké : ${n(Number(s.blobsStockes) || 0)} fichier(s) — ${octets(Number(s.octetsStockes) || 0)}`,
-      ],
+        // Signalés, jamais supprimés : la page Coffre-fort les liste.
+        Number(s.perdusChezMega) > 0 ? `${n(Number(s.perdusChezMega))} fichier(s) perdu(s) chez MEGA — voir la page Coffre-fort` : "",
+      ].filter(Boolean),
     };
   }
 
@@ -193,7 +195,8 @@ function resumeResultat(name: string, brut: unknown): string | null {
       const c = (v.corbeille || {}) as { fichiers?: number; dossiers?: number };
       return `${n((c.fichiers || 0) + (c.dossiers || 0))} élément(s) de corbeille, ${n(k("supprimes"))} fichier(s) chez MEGA`
         + (k("echecs") ? `, ${n(k("echecs"))} échec(s)` : "")
-        + (k("rapproches") ? `, ${n(k("rapproches"))} rapproché(s)` : "");
+        + (k("rapproches") ? `, ${n(k("rapproches"))} rapproché(s)` : "")
+        + (k("perdus") ? `, ${n(k("perdus"))} perdu(s) chez MEGA` : "");
     }
     case "data_retention":
       return `${n(Object.values(v).reduce<number>((acc, x) => acc + (Number(x) || 0), 0))} ligne(s)`;

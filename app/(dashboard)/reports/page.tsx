@@ -21,6 +21,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { FeedListSkeleton } from "@/components/skeletons";
 import { ErrorState } from "@/components/ui/error-state";
+import { SafeboxReportBlock } from "@/components/reports/SafeboxReportBlock";
 import { useHandleReport, useReportActions, useReports } from "@/hooks/useReports";
 import { reportReasonLabel } from "@/lib/report-labels";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -102,6 +103,7 @@ export default function ReportsPage() {
   const handle = useHandleReport();
 
   const canHandle = can("reports.handle");
+  const canDeleteSafebox = can("safebox.delete");
 
   /**
    * Changer de filtre ou de recherche ramène à la première page.
@@ -325,13 +327,22 @@ export default function ReportsPage() {
                           : ""}
                         {r.msgDeleted ? " · supprimé par son auteur" : ""}
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-                        {r.msgContent || (
-                          <span className="italic text-zinc-400">
-                            {r.msgType === 0 ? "message vide" : "contenu non textuel"}
-                          </span>
-                        )}
-                      </p>
+                      {/* Fichier du coffre (type 11) : le contenu est un JSON
+                          technique ; on montre le fichier lui-même, et les
+                          gestes de modération qui vont avec. */}
+                      {r.msgType === 11 ? (
+                        <div className="mt-2">
+                          <SafeboxReportBlock report={r} canHandle={canHandle} canDelete={canDeleteSafebox} />
+                        </div>
+                      ) : (
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+                          {r.msgContent || (
+                            <span className="italic text-zinc-400">
+                              {r.msgType === 0 ? "message vide" : "contenu non textuel"}
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
