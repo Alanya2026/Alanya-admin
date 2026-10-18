@@ -1036,6 +1036,11 @@ export interface BillingPlan {
   storeProductIos: string | null;
   storeProductAndroid: string | null;
   features: string[];
+  /**
+   * Espace du coffre-fort accordé par ce plan, en octets (migration 103).
+   * Null : l'espace gratuit. Absent d'un serveur antérieur au coffre.
+   */
+  safeboxBytes?: number | string | null;
   updatedAt?: string;
 }
 
@@ -1053,6 +1058,7 @@ export interface BillingPlanPayload {
   store_product_ios?: string | null;
   store_product_android?: string | null;
   features?: string[];
+  safebox_bytes?: number | null;
 }
 
 export type BillingPaymentStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -1249,4 +1255,48 @@ export interface UserBillingResponse {
   } | null;
   periods: BillingPeriodRow[];
   payments: BillingPaymentRow[];
+}
+
+// ── Coffre-fort (GET /admin/safebox) ────────────────────────────────────────
+
+export type SafeboxFamily = 'albums' | 'videos' | 'audios' | 'documents';
+
+export interface SafeboxAdminSettings {
+  baseQuotaBytes: number;
+  maxFileBytes: number;
+  maxFileBytesPlus: number;
+  maxDepth: number;
+  maxFolders: number;
+  shareDownloadsPerDay: number;
+  extensions: Record<SafeboxFamily, string[]>;
+  lastReconcileAt: string | null;
+}
+
+export interface SafeboxAdmin {
+  totals: {
+    vaults: number;
+    files: number;
+    /** Ce qui compte dans les espaces des inscrits (corbeille comprise). */
+    countedBytes: number;
+    trashBytes: number;
+    /** Ce que MEGA stocke réellement, chaque fichier une fois : ce qui est facturé. */
+    megaBytes: number;
+    pendingUploads: number;
+    shares30d: number;
+    shareDownloads30d: number;
+  };
+  byFamily: Record<SafeboxFamily, { files: number; bytes: number }>;
+  topUsers: Array<{ alanyaID: number; name: string | null; phone: string | null; files: number; bytes: number }>;
+  settings: SafeboxAdminSettings;
+}
+
+/** Corps de PUT /admin/safebox/settings — snake_case, champs facultatifs. */
+export interface SafeboxSettingsPayload {
+  base_quota_bytes?: number;
+  max_file_bytes?: number;
+  max_file_bytes_plus?: number;
+  max_depth?: number;
+  max_folders?: number;
+  share_downloads_per_day?: number;
+  extensions?: Record<SafeboxFamily, string[]> | null;
 }

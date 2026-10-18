@@ -28,7 +28,7 @@ import type { PurgeRun, PurgeSetting } from "@/types";
 import {
   AlertTriangle, CheckCircle2, Clock, Database, Eraser, FileImage,
   Loader2, Megaphone, Power, RefreshCw, Route, ShieldAlert, Smile, Sparkles,
-  TriangleAlert, XCircle,
+  TriangleAlert, Vault, XCircle,
 } from "lucide-react";
 
 const n = (v: number) => v.toLocaleString("fr-FR");
@@ -54,6 +54,7 @@ const IDENTITE: Record<string, { icon: typeof Eraser; couleur: string }> = {
   welcome_status: { icon: Sparkles, couleur: "#a855f7" },
   trip: { icon: Route, couleur: "#f59e0b" },
   data_retention: { icon: Database, couleur: "#10b981" },
+  safebox: { icon: Vault, couleur: "#64748b" },
 };
 
 /**
@@ -121,12 +122,88 @@ function resumeStats(p: PurgeSetting): { total: number; lignes: string[] } {
     };
   }
 
+  if (p.name === "safebox") {
+    // Seuls les deux premiers comptes partent à la corbeille : les orphelins sont
+    // des fichiers déjà sortis de tout coffre, qui n'attendent que MEGA.
+    const corbeille = Number(s.corbeilleEchue) || 0;
+    const abandons = Number(s.envoisAbandonnes) || 0;
+    const orphelins = Number(s.orphelins) || 0;
+    return {
+      total: corbeille + abandons + orphelins,
+      lignes: [
+        `${n(corbeille)} élément(s) en corbeille depuis plus de 30 jours`,
+        `${n(abandons)} envoi(s) abandonné(s), ${n(orphelins)} fichier(s) sans propriétaire chez MEGA`,
+        `stocké : ${n(Number(s.blobsStockes) || 0)} fichier(s) — ${octets(Number(s.octetsStockes) || 0)}`,
+      ],
+    };
+  }
+
+  if (p.name === "e2ee_envelope") {
+    const remises = Number(s.remises) || 0;
+    const attente = Number(s.enAttente) || 0;
+    const cles = Number(s.clesServies) || 0;
+    return {
+      total: remises + attente + cles,
+      lignes: [
+        `${n(remises)} enveloppe(s) remise(s), ${n(attente)} jamais remise(s)`,
+        `${n(cles)} clé(s) à usage unique déjà servie(s)`,
+      ],
+    };
+  }
+
   const l = Number(s.lignes) || 0;
   const suffixe = s.retentionFigee ? ` au-delà de ${s.retentionFigee}` : "";
   return { total: l, lignes: [`${n(l)} ligne${l > 1 ? "s" : ""}${suffixe}`] };
 }
 
+/**
+ * Ce qu'un passage a supprimé, lu dans `result` (journal `purge_runs`).
+ *
+ * Même logique que `resumeStats` : chaque purge renvoie sa propre forme. Les
+ * clés passent par la conversion camelCase de lib/api.ts (`job_queue` →
+ * `jobQueue`), d'où la somme pour la rétention générale plutôt qu'un détail
+ * par table.
+ */
+function resumeResultat(name: string, brut: unknown): string | null {
+  let r = brut;
+  if (typeof r === "string") {
+    try { r = JSON.parse(r); } catch { return null; }
+  }
+  if (!r || typeof r !== "object") return null;
+  const v = r as Record<string, unknown>;
+  const k = (cle: string) => Number(v[cle]) || 0;
+
+  switch (name) {
+    case "media":
+      return `${n(k("files"))} fichier(s)`;
+    case "broadcast":
+      return `${n(k("accuses"))} accusé(s)`;
+    case "story":
+      return `${n(k("statut"))} story(s), ${n(k("fichiers"))} fichier(s)`;
+    case "welcome_status":
+      return `${n(k("purged"))} statut(s)`;
+    case "trip":
+      return `${n(k("points"))} position(s), ${n(k("trips"))} trajet(s)`;
+    case "backup_key_access":
+      return `${n(k("supprimees"))} ligne(s)`;
+    case "e2ee_envelope":
+      return `${n(k("remises") + k("enAttente"))} enveloppe(s), ${n(k("clesServies"))} clé(s)`;
+    case "safebox": {
+      if (typeof v.ignore === "string") return `rien fait : ${v.ignore}`;
+      const c = (v.corbeille || {}) as { fichiers?: number; dossiers?: number };
+      return `${n((c.fichiers || 0) + (c.dossiers || 0))} élément(s) de corbeille, ${n(k("supprimes"))} fichier(s) chez MEGA`
+        + (k("echecs") ? `, ${n(k("echecs"))} échec(s)` : "")
+        + (k("rapproches") ? `, ${n(k("rapproches"))} rapproché(s)` : "");
+    }
+    case "data_retention":
+      return `${n(Object.values(v).reduce<number>((acc, x) => acc + (Number(x) || 0), 0))} ligne(s)`;
+    default:
+      return null;
+  }
+}
+
 function LigneHistorique({ run }: { run: PurgeRun }) {
+  const supprime = run.ok ? resumeResultat(run.name, run.result) : null;
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
       {run.ok ? (
@@ -139,6 +216,7 @@ function LigneHistorique({ run }: { run: PurgeRun }) {
         {run.triggerSource === "manual" ? "manuelle" : "auto"}
       </Badge>
       {run.byAdmin && <span className="truncate max-w-[14rem]">par {run.byAdmin}</span>}
+      {supprime && <span className="tabular-nums">· {supprime}</span>}
       {run.durationMs != null && <span className="tabular-nums">· {n(run.durationMs)} ms</span>}
       {run.error && <span className="truncate text-red-500">· {run.error}</span>}
     </div>

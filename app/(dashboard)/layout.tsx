@@ -24,6 +24,7 @@ import {
   DatabaseBackup,
   Flag,
   CreditCard,
+  Vault,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -51,6 +52,7 @@ const navItemsAll = [
   { href: "/groups", label: "Groupes", icon: UsersRound, permission: "groups.read" },
   { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
   { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
+  { href: "/safebox", label: "Coffre-fort", icon: Vault, permission: "safebox.read" },
   { href: "/geolocation", label: "Géolocalisation", icon: MapPin, permission: "stats.read" },
   { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
   { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },
