@@ -551,7 +551,6 @@ function StatusBlockCard({
             <FileUpload
               endpoint="/upload/official"
               accept={block.type === 1 ? "image/*" : "video/*"}
-              maxSize={50 * 1024 * 1024}
               onUploadComplete={(url) => onUpdate({ mediaUrl: url })}
             />
           </div>
