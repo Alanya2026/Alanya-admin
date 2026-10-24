@@ -25,6 +25,9 @@ jobs:
             # réaligne sur main, comme le backend. Un `git pull` abandonnait
             # dès qu'un fichier suivi (package-lock.json, réécrit par un
             # `npm install` lancé à la main) différait du dépôt.
+            # Le remote suit le dépôt qui lance ce pipeline (Alanya2026), et
+            # non celui du clonage initial.
+            git remote set-url origin https://github.com/${{ github.repository }}.git
             git fetch origin main
             git reset --hard origin/main
             npm ci
