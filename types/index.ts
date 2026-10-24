@@ -1259,7 +1259,7 @@ export interface UserBillingResponse {
 
 // ── Coffre-fort (GET /admin/safebox) ────────────────────────────────────────
 
-export type SafeboxFamily = 'albums' | 'videos' | 'audios' | 'documents';
+export type SafeboxFamily = 'photos' | 'videos' | 'audios' | 'documents';
 
 export interface SafeboxAdminSettings {
   baseQuotaBytes: number;

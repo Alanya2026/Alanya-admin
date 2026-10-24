@@ -26,14 +26,14 @@ import { useDeleteReportSafebox, useReportSafebox, useRevokeReportSafebox } from
 import type { Report, SafeboxFamily } from "@/types";
 
 const ICONE: Record<SafeboxFamily, typeof Images> = {
-  albums: Images,
+  photos: Images,
   videos: Film,
   audios: Music,
   documents: FileText,
 };
 
 const FAMILLE: Record<SafeboxFamily, string> = {
-  albums: "photo",
+  photos: "photo",
   videos: "vidéo",
   audios: "audio",
   documents: "document",

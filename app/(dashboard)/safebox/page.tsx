@@ -49,7 +49,7 @@ const dateLongue = (s: string | null) =>
   s ? new Date(s).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "jamais";
 
 const FAMILLES: Array<{ cle: SafeboxFamily; libelle: string; icon: typeof Images; couleur: string }> = [
-  { cle: "albums", libelle: "Albums", icon: Images, couleur: "#ec4899" },
+  { cle: "photos", libelle: "Photos", icon: Images, couleur: "#ec4899" },
   { cle: "videos", libelle: "Vidéos", icon: Film, couleur: "#6366f1" },
   { cle: "audios", libelle: "Audios", icon: Music, couleur: "#f59e0b" },
   { cle: "documents", libelle: "Documents", icon: FileText, couleur: "#10b981" },
