@@ -676,25 +676,14 @@ export function StickerPackEditor({ id }: { id: number }) {
               )}
 
               {fichiers.length > 0 && (
-                <ul className="flex flex-wrap gap-2">
+                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                   {fichiers.map(({ file: f, anime }, i) => (
-                    <li
-                      key={`${f.name}-${i}`}
-                      className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs dark:bg-zinc-800"
-                    >
-                      <ImagePlus className="h-3.5 w-3.5 text-zinc-400" />
-                      <span className="max-w-[10rem] truncate">{f.name}</span>
-                      {anime && <AnimeBadge />}
-                      <span className="tabular-nums text-zinc-400">{formatOctets(f.size)}</span>
-                      <button
-                        type="button"
-                        aria-label={`Retirer ${f.name}`}
-                        onClick={() => setFichiers((prev) => prev.filter((_, j) => j !== i))}
-                        className="rounded-full p-0.5 text-zinc-400 hover:text-red-500"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </li>
+                    <ApercuFichier
+                      key={`${f.name}-${f.size}-${f.lastModified}-${i}`}
+                      file={f}
+                      anime={anime}
+                      onRetirer={() => setFichiers((prev) => prev.filter((_, j) => j !== i))}
+                    />
                   ))}
                 </ul>
               )}
@@ -752,6 +741,67 @@ export function StickerPackEditor({ id }: { id: number }) {
         onConfirm={confirmerRetrait}
       />
     </div>
+  );
+}
+
+/**
+ * Fichier en attente d'envoi : vignette de l'image sur un damier (la transparence
+ * se voit), nom, poids et badge « Animé ». L'URL d'aperçu est locale au navigateur
+ * (`URL.createObjectURL`) : rien ne part au serveur avant « Envoyer », et elle est
+ * libérée dès que la vignette disparaît.
+ */
+function ApercuFichier({
+  file,
+  anime,
+  onRetirer,
+}: {
+  file: File;
+  anime: boolean;
+  onRetirer: () => void;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+
+  return (
+    <li className="group relative flex flex-col gap-1 rounded-lg border border-zinc-200 bg-white p-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-900">
+      <div
+        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800"
+        style={{
+          backgroundImage:
+            "linear-gradient(45deg, rgba(128,128,128,.18) 25%, transparent 25%, transparent 75%, rgba(128,128,128,.18) 75%), linear-gradient(45deg, rgba(128,128,128,.18) 25%, transparent 25%, transparent 75%, rgba(128,128,128,.18) 75%)",
+          backgroundSize: "14px 14px",
+          backgroundPosition: "0 0, 7px 7px",
+        }}
+      >
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={file.name} className="h-full w-full object-contain" />
+        ) : (
+          <ImagePlus className="h-6 w-6 text-zinc-300 dark:text-zinc-600" />
+        )}
+        {anime && (
+          <span className="absolute left-1 top-1">
+            <AnimeBadge />
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label={`Retirer ${file.name}`}
+          onClick={onRetirer}
+          className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-zinc-500 shadow-sm hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-zinc-900/90"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <span className="truncate" title={file.name}>
+        {file.name}
+      </span>
+      <span className="tabular-nums text-zinc-400">{formatOctets(file.size)}</span>
+    </li>
   );
 }
 
