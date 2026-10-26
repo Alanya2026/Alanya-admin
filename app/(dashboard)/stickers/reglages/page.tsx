@@ -138,7 +138,7 @@ export default function StickerSettingsPage() {
               />
               <ToggleRow
                 title="Stickers animés"
-                hint="Autoriser la lecture des WebP animés (livraison V1c)."
+                hint="Livraison V1c. Ouvert : les utilisateurs voient et envoient les stickers animés (WebP animé déposés dans les packs officiels), et la création animée s'ouvre. Fermé : les animés sont omis des packs, leur envoi est refusé et la création animée répond « introuvable » ; les messages déjà envoyés restent. Il ne publie rien : un pack avec des animés doit aussi être publié, et l'ouverture générale du catalogue reste nécessaire."
                 checked={form.animatedEnabled}
                 disabled={!canEdit}
                 onChange={(v) => patch({ animatedEnabled: v })}

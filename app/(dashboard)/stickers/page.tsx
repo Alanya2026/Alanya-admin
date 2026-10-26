@@ -26,6 +26,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useCreateStickerPack, useStickerPacks } from "@/hooks/useStickers";
 import { resolveTranslation } from "@/lib/content-locales";
 import {
+  formatOctets,
   STICKER_PACK_MIN,
   STICKER_PACK_STATUS_LABEL,
   STICKER_PACK_STATUS_STYLE,
@@ -103,6 +104,12 @@ function PackCard({ pack }: { pack: StickerPackRow }) {
         </p>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           {pack.stickerCount} sticker{pack.stickerCount > 1 ? "s" : ""}
+          {pack.totalBytes != null && ` · ${formatOctets(pack.totalBytes)}`}
+          {(pack.animatedCount ?? 0) > 0 && (
+            <span className="ml-1.5 rounded-md bg-fuchsia-100 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300">
+              {pack.animatedCount} animé{(pack.animatedCount ?? 0) > 1 ? "s" : ""}
+            </span>
+          )}
           {incomplet && (
             <span className="ml-1 text-amber-600 dark:text-amber-400">
               — minimum {STICKER_PACK_MIN} pour publier
@@ -209,6 +216,14 @@ export default function StickersPage() {
   });
   const packs = data ?? [];
 
+  // Poids de tous les packs, tous statuts confondus (les archivés occupent
+  // encore le stockage) : requête sans filtre, partagée avec la liste quand
+  // aucun filtre n'est actif.
+  const { data: tous } = useStickerPacks({});
+  const poidsTotal = tous ? tous.reduce((n, p) => n + (p.totalBytes ?? 0), 0) : null;
+  const poidsAffiche = packs.reduce((n, p) => n + (p.totalBytes ?? 0), 0);
+  const filtree = filtre !== "" || rechercheDifferee.trim() !== "";
+
   if (!can("stickers.read")) {
     return (
       <p className="py-20 text-center text-sm text-zinc-500">
@@ -258,7 +273,12 @@ export default function StickersPage() {
         </div>
         {data && (
           <p className="text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-            {packs.length} pack{packs.length > 1 ? "s" : ""}
+            {packs.length} pack{packs.length > 1 ? "s" : ""} · {formatOctets(poidsAffiche)}
+            {filtree && poidsTotal != null && (
+              <span className="ml-1 text-zinc-400">
+                (tous les packs : {formatOctets(poidsTotal)})
+              </span>
+            )}
           </p>
         )}
       </div>
