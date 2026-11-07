@@ -10,6 +10,7 @@ import { formatDisplay, formatLiveInput, isCompletePhone, normalize, validate } 
 import { AccountBadgeLabel, isOfficialAlanyaAccount } from "@/components/account-badge";
 import { SubscriptionCard } from "@/components/billing/SubscriptionCard";
 import { PhoneHistoryCard } from "@/components/users/PhoneHistoryCard";
+import { DocumentsSensiblesCard } from "@/components/users/DocumentsSensiblesCard";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -374,6 +375,8 @@ export default function UserDetailPage() {
           )}
 
           <PhoneHistoryCard userId={id} />
+
+          {can("documents.trace") && <DocumentsSensiblesCard userId={id} />}
         </div>
 
         {/* Activity + Logins */}

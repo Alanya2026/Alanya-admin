@@ -23,6 +23,7 @@ import {
   Flag,
   CreditCard,
   Sticker,
+  Fingerprint,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -50,6 +51,7 @@ const navItemsAll = [
   { href: "/groups", label: "Groupes", icon: UsersRound, permission: "groups.read" },
   { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
   { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
+  { href: "/documents-sensibles", label: "Documents sensibles", icon: Fingerprint, permission: "documents.trace" },
   { href: "/geolocation", label: "Géolocalisation", icon: MapPin, permission: "stats.read" },
   { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
   { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },

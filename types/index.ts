@@ -1380,3 +1380,75 @@ export interface StickerPackIncomplete {
   code: "STICKER_PACK_INCOMPLETE";
   missing: string[];
 }
+
+// ── Documents sensibles : enquête par empreinte (super-admin) ─────────────
+
+export type GesteSensible = "CONSULTATION" | "TELECHARGEMENT" | "PARTAGE" | "TRANSFERT";
+export type CompteStatut = "actif" | "banni" | "suppression_programmee" | "supprime";
+
+export interface EmpreintePersonne {
+  id: number;
+  nom: string | null;
+  pseudo: string | null;
+  numero: string | null;
+  avatarUrl: string | null;
+  typeCompte: number | null;
+  statut: CompteStatut;
+  suppressionPrevueLe: string | null;
+}
+
+export interface EmpreinteSession {
+  appareilId: string;
+  /** false : session d'avant la migration 026, ou effacée avec le compte. */
+  connue: boolean;
+  nom?: string | null;
+  plateforme?: string | null;
+  ip?: string | null;
+  connexion?: "password" | "register" | "qr" | null;
+  ouverteLe?: string | null;
+  derniereActivite?: string | null;
+  revoqueeLe?: string | null;
+  autresComptes?: { id: number; nom: string | null; numero: string | null }[];
+}
+
+export interface EmpreinteEvenement {
+  id: number;
+  geste: GesteSensible;
+  date: string;
+  empreinte: string | null;
+  appareil: string | null;
+  cetteCopie: boolean;
+  personne: { id: number; nom: string | null; numero: string | null; supprime: boolean };
+}
+
+export interface EmpreinteFiche {
+  empreinte: string;
+  geste: GesteSensible;
+  date: string;
+  appareil: string | null;
+  auteur: EmpreintePersonne;
+  expediteur: EmpreintePersonne;
+  session: EmpreinteSession | null;
+  document: {
+    msgID: number;
+    nom: string | null;
+    type: number | null;
+    taille: number | null;
+    envoyeLe: string | null;
+    etat: "present" | "supprime" | "purge";
+  };
+  conversation: { id: number; existe: boolean; groupe: boolean | null; nom: string | null; membres: number };
+  historique: { tronque: boolean; evenements: EmpreinteEvenement[] };
+  sortiesAuteur: {
+    total: number;
+    dernieres: { empreinte: string; geste: GesteSensible; date: string; document: { msgID: number; nom: string | null } }[];
+  };
+  verifications: { date: string; motif: string | null; trouvee: boolean; admin: { id: number; nom: string | null } | null }[];
+}
+
+export interface DocumentsSensiblesResume {
+  consultations: number;
+  copies: number;
+  derniereCopie: string | null;
+  copiesDeSesEnvois: number;
+}
