@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle, ClipboardPaste, Copy, FileText, Fingerprint, History, Loader2,
-  MonitorSmartphone, Search, Send, ShieldAlert, UserRound, UsersRound,
+  MonitorSmartphone, Search, Send, ShieldAlert, UserRound,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useVerifierEmpreinte } from "@/hooks/useDocumentsSensibles";
+import { useAudit } from "@/hooks/useAudit";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/account-labels";
 import { formatDisplay } from "@/lib/alanya-phone";
 import {
@@ -418,6 +419,72 @@ function Fiche({ f, onVerifier }: { f: EmpreinteFiche; onVerifier: (empreinte: s
   );
 }
 
+// ── Recherches récentes ──────────────────────────────────────────────────
+
+/**
+ * Les dernières recherches, tous administrateurs confondus, lues dans le
+ * journal (`documents.trace`) : le résultat d'une recherche ne survit pas à
+ * la page, sa trace si. « Reprendre » remplit le champ ; le motif reste à
+ * saisir et rien ne part seul.
+ */
+function RecherchesRecentes({ onReprendre }: { onReprendre: (empreinte: string) => void }) {
+  const { data, isLoading, isError } = useAudit({ action: "documents.trace", limit: 20 });
+  const lignes = data ?? [];
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <History className="h-4 w-4 text-indigo-600" /> Recherches récentes
+        </CardTitle>
+        <CardDescription>Les 20 dernières vérifications d&apos;empreinte, avec leur auteur et leur motif.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-zinc-500">Chargement…</p>
+        ) : isError ? (
+          <p className="text-sm text-zinc-500">Journal indisponible.</p>
+        ) : lignes.length === 0 ? (
+          <p className="text-sm text-zinc-500">Aucune recherche pour l&apos;instant.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {lignes.map((l) => (
+              <li key={l.id} className="flex flex-col gap-1 py-2.5 text-sm sm:flex-row sm:items-center sm:gap-3">
+                <span className="w-32 shrink-0 text-xs text-zinc-500 tabular-nums">{dateEnquete(l.createdAt).locale}</span>
+                <span className="w-40 shrink-0 truncate font-medium">{l.adminNom ?? (l.adminId ? `#${l.adminId}` : "—")}</span>
+                <span className={cn(MONO, "shrink-0 text-xs")}>
+                  {l.targetId ? `${formaterEmpreinte(l.targetId).slice(0, 14)}…` : "—"}
+                </span>
+                <Badge
+                  className={cn(
+                    "w-fit shrink-0 border-0",
+                    l.statusCode === 200
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+                  )}
+                >
+                  {l.statusCode === 200 ? "Trouvée" : "Inconnue"}
+                </Badge>
+                <span className="min-w-0 flex-1 truncate text-zinc-600 dark:text-zinc-400" title={l.reason ?? undefined}>
+                  {l.reason ?? "—"}
+                </span>
+                {l.targetId && (
+                  <button
+                    type="button"
+                    onClick={() => onReprendre(l.targetId!)}
+                    className="shrink-0 text-xs text-indigo-600 hover:underline"
+                  >
+                    Reprendre
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────
 
 function Enquete() {
@@ -504,7 +571,7 @@ function Enquete() {
                   ref={champ}
                   value={saisie}
                   onChange={(e) => setSaisie(saisieEmpreinte(e.target.value))}
-                  placeholder="3F9A 0C1E 5B7D 0000 1111 2222 3333 ABCD"
+                  placeholder="32 caractères hexadécimaux, collés depuis la copie"
                   autoComplete="off"
                   spellCheck={false}
                   className={cn(MONO, "text-base")}
@@ -555,12 +622,7 @@ function Enquete() {
 
       {fiche && <Fiche f={fiche} onVerifier={preparer} />}
 
-      {!fiche && !erreur && (
-        <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-zinc-500">
-          <UsersRound className="h-8 w-8 text-zinc-300 dark:text-zinc-700" />
-          Auteur, session, document et historique complet s&apos;afficheront ici.
-        </div>
-      )}
+      <RecherchesRecentes onReprendre={preparer} />
     </div>
   );
 }
