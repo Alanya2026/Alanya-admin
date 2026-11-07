@@ -20,10 +20,13 @@ import {
   Eraser,
   HeartPulse,
   ScrollText,
+  KeyRound,
+  DatabaseBackup,
   Flag,
   CreditCard,
   Sticker,
   Fingerprint,
+  Vault,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -52,6 +55,7 @@ const navItemsAll = [
   { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
   { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
   { href: "/documents-sensibles", label: "Documents sensibles", icon: Fingerprint, permission: "documents.trace" },
+  { href: "/safebox", label: "Coffre-fort", icon: Vault, permission: "safebox.read" },
   { href: "/geolocation", label: "Géolocalisation", icon: MapPin, permission: "stats.read" },
   { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
   { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },
@@ -66,6 +70,14 @@ const navItemsAll = [
   // Lisible par tout administrateur, délibérément : un journal que seul son
   // lecteur le plus puissant peut consulter ne protège personne de lui.
   { href: "/audit", label: "Activité admin", icon: ScrollText, permission: "audit.read" },
+  // Même permission que l'audit : c'est le même métier, celui de constater. Une
+  // page à part cependant — chaque inscrit demande sa clé à chaque sauvegarde,
+  // et ces milliers de lignes de routine noieraient le journal des gestes
+  // d'administrateur.
+  // Constat, pas action : le serveur ne détient aucune archive. D'où
+  // `stats.read` — c'est une vue d'ensemble du parc, pas un pouvoir de plus.
+  { href: "/backups", label: "Sauvegardes", icon: DatabaseBackup, permission: "stats.read" },
+  { href: "/backup-keys", label: "Clés de sauvegarde", icon: KeyRound, permission: "audit.read" },
   // Sur `stats.read` plutôt qu'une permission dédiée : créer une permission
   // aurait imposé une migration et une reconfiguration de tous les rôles pour
   // une page en lecture seule, qui n'expose que des compteurs et des messages

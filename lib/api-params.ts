@@ -9,7 +9,9 @@
  * centralisent la correspondance pour qu'une régression ne se produise qu'ici.
  */
 
-export const USER_SORT_COLUMNS = ["created_at", "nom", "last_seen"] as const;
+// `backup_last_at` : page Sauvegardes, les comptes les plus anciennement
+// sauvegardés d'abord (usersQuery.js le connaît).
+export const USER_SORT_COLUMNS = ["created_at", "nom", "last_seen", "backup_last_at"] as const;
 export type UserSortColumn = (typeof USER_SORT_COLUMNS)[number];
 export type OrderDir = "asc" | "desc";
 
@@ -25,6 +27,8 @@ export interface UsersApiParams {
   to?: string;
   sort?: UserSortColumn;
   order?: OrderDir;
+  /** `never` | `stale` | `recent` — état de sauvegarde du compte. */
+  backup?: string;
 }
 
 /**
@@ -50,6 +54,8 @@ export function buildUsersApiParams(query: UsersApiParams): Record<string, strin
   if (query.typeCompte != null && query.typeCompte !== "") {
     params.type_compte = query.typeCompte;
   }
+  // État de sauvegarde : même nom des deux côtés.
+  if (query.backup) params.backup = query.backup;
 
   const sort = USER_SORT_COLUMNS.includes(query.sort as UserSortColumn)
     ? (query.sort as UserSortColumn)

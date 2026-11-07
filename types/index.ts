@@ -44,12 +44,73 @@ export interface User {
   excludeReason: string | null;
   createdAt: string | null;
   paysLibelle: string | null;
+
+  /** Dernière sauvegarde déclarée par l'appareil. `null` = jamais sauvegardé. */
+  backupLastAt: string | null;
+  backupBytes: number | null;
+  backupMessageCount: number | null;
+}
+
+/** État des sauvegardes du parc. Lecture seule : le serveur ne détient aucune
+ *  archive — elles sont sur le Drive de l'inscrit ou dans son téléphone. */
+export interface BackupOverview {
+  /** Au-delà, une sauvegarde est dite périmée. Vient du serveur pour que la
+   *  règle ne puisse pas diverger entre les deux côtés. */
+  staleDays: number;
+  comptes: number;
+  avecSauvegarde: number;
+  recentes: number;
+  perimees: number;
+  jamais: number;
+  octetsTotal: number;
+  derniere: string | null;
+  /** Part du parc réellement protégée, en pourcentage. */
+  couverture: number;
+}
+
+/**
+ * Une version de clé de sauvegarde.
+ *
+ * Le secret n'y figure pas, et ne figurera jamais : il est engendré côté
+ * serveur et n'a aucune raison de voyager.
+ */
+export interface BackupKeyVersion {
+  kid: number;
+  createdAt: string;
+  /** Renseigné = sortie du service pour les NOUVELLES sauvegardes. Elle reste
+   *  lisible : les archives qui la portent se restaurent toujours. */
+  retiredAt: string | null;
+  active: boolean;
+  /** Le secret vaut encore son marqueur de déploiement : le serveur refuse de
+   *  servir la clé, donc aucune sauvegarde ne peut être écrite. */
+  placeholder: boolean;
+  comptes: number;
+}
+
+export interface BackupKeyState {
+  versions: BackupKeyVersion[];
+  /** Version qui chiffrera la prochaine sauvegarde. */
+  courante: number | null;
+  /** Faux = plus aucune sauvegarde n'est possible sur tout le parc. */
+  utilisable: boolean;
+}
+
+/** Combien de comptes portent chaque version de clé. Après une rotation, dit
+ *  combien de sauvegardes deviendraient illisibles si l'on retirait la version
+ *  précédente trop tôt. */
+export interface BackupKeyUsage {
+  kid: number;
+  comptes: number;
+  derniere: string | null;
 }
 
 export interface UserDetail extends User {
   fcmToken: string;
   deviceID: string;
   paysPrefix: string;
+  backupKid: number | null;
+  /** Adresse Google masquée du compte de dépôt, telle que le serveur la garde. */
+  backupAccountHint: string | null;
 }
 
 export interface UserActivity {
@@ -710,6 +771,40 @@ export interface AuditEntry {
   adminEmail: string | null;
 }
 
+/**
+ * Une délivrance de clé de sauvegarde, ou son refus.
+ *
+ * Journal séparé de `AuditEntry` parce que les deux n'ont pas la même nature :
+ * l'audit recense des gestes rares et délibérés d'administrateur, celui-ci une
+ * opération de routine que chaque inscrit déclenche à chaque sauvegarde. Les
+ * mêler noierait le premier sous le second.
+ */
+export interface BackupKeyAccess {
+  id: number;
+  alanyaId: number;
+  /** Version de clé demandée. `null` = version courante, donc une sauvegarde ;
+   *  renseignée = une restauration. */
+  kid: number | null;
+  outcome: 'servie' | 'refusee';
+  reason: string | null;
+  ip: string | null;
+  deviceId: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  compteNom: string | null;
+  comptePhone: string | null;
+}
+
+/** Vue d'ensemble sur une fenêtre : ce qui répond à « rien d'anormal ? ». */
+export interface BackupKeyAccessSummary {
+  days: number;
+  total: number;
+  refus: number;
+  comptes: number;
+  adresses: number;
+  derniere: string | null;
+}
+
 /** Vocabulaire réellement présent dans le journal, pour alimenter les filtres. */
 export interface AuditActionCount {
   action: string;
@@ -959,6 +1054,11 @@ export interface BillingPlan {
   storeProductIos: string | null;
   storeProductAndroid: string | null;
   features: string[];
+  /**
+   * Espace du coffre-fort accordé par ce plan, en octets (migration 103).
+   * Null : l'espace gratuit. Absent d'un serveur antérieur au coffre.
+   */
+  safeboxBytes?: number | string | null;
   updatedAt?: string;
 }
 
@@ -976,6 +1076,7 @@ export interface BillingPlanPayload {
   store_product_ios?: string | null;
   store_product_android?: string | null;
   features?: string[];
+  safebox_bytes?: number | null;
 }
 
 export type BillingPaymentStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -1451,4 +1552,81 @@ export interface DocumentsSensiblesResume {
   copies: number;
   derniereCopie: string | null;
   copiesDeSesEnvois: number;
+}
+
+// ── Coffre-fort (GET /admin/safebox) ────────────────────────────────────────
+
+export type SafeboxFamily = 'photos' | 'videos' | 'audios' | 'documents';
+
+export interface SafeboxAdminSettings {
+  baseQuotaBytes: number;
+  maxFileBytes: number;
+  maxFileBytesPlus: number;
+  maxDepth: number;
+  maxFolders: number;
+  shareDownloadsPerDay: number;
+  extensions: Record<SafeboxFamily, string[]>;
+  lastReconcileAt: string | null;
+}
+
+export interface SafeboxAdmin {
+  totals: {
+    vaults: number;
+    files: number;
+    /** Ce qui compte dans les espaces des inscrits (corbeille comprise). */
+    countedBytes: number;
+    trashBytes: number;
+    /** Ce que MEGA stocke réellement, chaque fichier une fois : ce qui est facturé. */
+    megaBytes: number;
+    pendingUploads: number;
+    shares30d: number;
+    shareDownloads30d: number;
+    /** Fichiers dont le contenu manquait chez MEGA au dernier rapprochement ; null sans la migration 106. */
+    lostFiles: number | null;
+  };
+  /** Les 50 plus récents de ces fichiers, pour prévenir leurs propriétaires. */
+  lost: Array<{
+    fileId: number; name: string; family: SafeboxFamily; alanyaID: number;
+    ownerName: string | null; plainBytes: number; lostAt: string;
+  }> | null;
+  byFamily: Record<SafeboxFamily, { files: number; bytes: number }>;
+  topUsers: Array<{ alanyaID: number; name: string | null; phone: string | null; files: number; bytes: number }>;
+  settings: SafeboxAdminSettings;
+}
+
+/** Corps de PUT /admin/safebox/settings — snake_case, champs facultatifs. */
+export interface SafeboxSettingsPayload {
+  base_quota_bytes?: number;
+  max_file_bytes?: number;
+  max_file_bytes_plus?: number;
+  max_depth?: number;
+  max_folders?: number;
+  share_downloads_per_day?: number;
+  extensions?: Record<SafeboxFamily, string[]> | null;
+}
+
+/** GET /admin/reports/:id/safebox — le fichier du coffre d'un signalement. */
+export interface ReportSafebox {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  name: string;
+  mime: string | null;
+  family: SafeboxFamily;
+  plainBytes: number;
+  createdAt: string;
+  /** Partage retiré par la modération. */
+  revokedAt: string | null;
+  /** Plus aucun fichier en base (supprimé par l'expéditeur, ou partout par la modération). */
+  fileDeleted: boolean;
+  trashed: boolean;
+  /** Coffres qui le contiennent (expéditeur et copies enregistrées). */
+  vaults: number;
+  /** Partages encore actifs de ce contenu, tous expéditeurs confondus. */
+  activeShares: number;
+  /** Destinataires qui l'ont reçu ; null sans la migration 104. */
+  recipients: number | null;
+  /** Aperçu déchiffré par le serveur (data:image/…), ou null. */
+  preview: string | null;
+  previewError: boolean;
 }

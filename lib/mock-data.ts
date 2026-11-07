@@ -18,4 +18,5 @@ export * from './api/broadcasts';
 export * from './api/welcome';
 export * from './api/profile';
 export * from './api/audit';
+export * from './api/backups';
 export * from './api/reports';

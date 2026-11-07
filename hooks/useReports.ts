@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchReportActions, fetchReports, postReportAction, type ReportsParams } from '@/lib/mock-data';
+import { deleteReportSafebox, fetchReportSafebox, revokeReportSafebox } from '@/lib/api/reports';
 
 /**
  * File de modération.
@@ -57,3 +58,30 @@ export function useHandleReport() {
     },
   });
 }
+
+/** Le fichier du coffre d'un signalement de type 11 (aperçu compris). */
+export function useReportSafebox(id: number | null) {
+  return useQuery({
+    queryKey: ['admin-report-safebox', id],
+    queryFn: () => fetchReportSafebox(id as number),
+    enabled: id != null,
+    retry: false,
+  });
+}
+
+function useSafeboxDecision<T>(fn: (v: { id: number; note?: string }) => Promise<T>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ['admin-report-safebox', id] });
+      qc.invalidateQueries({ queryKey: ['admin-reports'] });
+      qc.invalidateQueries({ queryKey: ['admin-report-actions', id] });
+      qc.invalidateQueries({ queryKey: ['admin-audit'] });
+      qc.invalidateQueries({ queryKey: ['admin-safebox'] });
+    },
+  });
+}
+
+export const useRevokeReportSafebox = () => useSafeboxDecision(({ id, note }) => revokeReportSafebox(id, note));
+export const useDeleteReportSafebox = () => useSafeboxDecision(({ id, note }) => deleteReportSafebox(id, note));

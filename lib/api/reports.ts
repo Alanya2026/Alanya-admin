@@ -87,3 +87,24 @@ export async function fetchReportActions(id: number): Promise<import('@/types').
 export async function postReportAction(id: number, action: string, note?: string): Promise<void> {
   await api.post(`/admin/reports/${id}/actions`, { action, note });
 }
+
+/** Le fichier du coffre d'un signalement (message de type 11) : état, étendue, aperçu. */
+export async function fetchReportSafebox(id: number): Promise<import('@/types').ReportSafebox> {
+  const res = await api.get(`/admin/reports/${id}/safebox`);
+  return res.data as import('@/types').ReportSafebox;
+}
+
+/** Retire tous les partages du fichier signalé. La décision est tracée au signalement. */
+export async function revokeReportSafebox(id: number, note?: string): Promise<{ revoked: number }> {
+  const res = await api.post(`/admin/reports/${id}/safebox/revoke`, { note });
+  return res.data as { revoked: number };
+}
+
+/** Supprime le fichier signalé partout, copies enregistrées comprises. Super-admin. */
+export async function deleteReportSafebox(
+  id: number,
+  note?: string,
+): Promise<{ revoked: number; files: number; vaults: number; megaDeleted: boolean }> {
+  const res = await api.post(`/admin/reports/${id}/safebox/delete`, { note });
+  return res.data as { revoked: number; files: number; vaults: number; megaDeleted: boolean };
+}
