@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Navigation admin — 3 stratégies de regroupement</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --panel: #ffffff;
+    --panel-2: #fafafa;
+    --ink: #18181b;
+    --muted: #71717a;
+    --faint: #a1a1aa;
+    --line: #e4e4e7;
+    --line-strong: #d4d4d8;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --accent-ink: #4338ca;
+    --danger: #dc2626;
+    --ok: #15803d;
+    --amber: #b45309;
+    --radius: 10px;
+    --side: 264px;
+    --rail: 68px;
+    --shadow: 0 18px 42px -18px rgba(24, 24, 27, .24), 0 4px 14px -6px rgba(24, 24, 27, .10);
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  .app svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  body {
+    background:
+      radial-gradient(1100px 520px at 8% -6%, #e0e7ff 0%, transparent 55%),
+      radial-gradient(900px 460px at 100% 0%, #fae8ff 0%, transparent 46%),
+      var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1320px; margin: 0 auto; padding: 44px 28px 72px; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent-ink); background: rgba(238, 242, 255, .85);
+    border: 1px solid #c7d2fe; border-radius: 999px; padding: 6px 11px;
+  }
+  h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -.035em; margin: 18px 0 12px; }
+  .lede { max-width: 760px; margin: 0; color: #52525b; font-size: 16px; }
+  .lede strong { color: var(--ink); }
+
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 30px 0 22px; padding: 6px; border: 1px solid var(--line);
+    background: rgba(255,255,255,.72); backdrop-filter: blur(10px);
+    border-radius: 14px; width: fit-content; box-shadow: 0 2px 10px rgba(24,24,27,.04);
+  }
+  .tab {
+    appearance: none; border: 0; background: transparent; color: #52525b;
+    font: 600 13px/1 var(--font); padding: 11px 15px; border-radius: 9px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+  }
+  .tab:hover { background: #f4f4f5; color: var(--ink); }
+  .tab[aria-selected="true"] { background: var(--ink); color: #fff; box-shadow: 0 5px 14px -6px rgba(24,24,27,.55); }
+  .tab .num {
+    display: inline-grid; place-items: center; width: 19px; height: 19px; border-radius: 6px;
+    background: rgba(255,255,255,.18); font-size: 11px;
+  }
+  .tab[aria-selected="false"] .num { background: #e4e4e7; color: #52525b; }
+  .tab .tag {
+    font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+    background: #dcfce7; color: #166534; padding: 3px 6px; border-radius: 5px;
+  }
+  .tab[aria-selected="true"] .tag { background: rgba(255,255,255,.16); color: #fff; }
+
+  .strategy { display: none; }
+  .strategy.active { display: block; animation: rise .28s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .strategy-head { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+  .strategy-head h2 { font-size: 22px; letter-spacing: -.02em; margin: 0 0 6px; }
+  .strategy-head p { margin: 0; max-width: 720px; color: #52525b; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pill {
+    font-size: 11px; font-weight: 650; color: #3f3f46; background: #fff;
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px;
+  }
+  .pill.indigo { background: var(--accent-soft); border-color: #c7d2fe; color: var(--accent-ink); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; align-items: start; }
+  @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ===== Fenêtre de maquette ===== */
+  .window {
+    background: #fff; border: 1px solid var(--line-strong); border-radius: 15px;
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .chrome {
+    height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 13px;
+    background: #f4f4f5; border-bottom: 1px solid var(--line);
+  }
+  .dots { display: flex; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #d4d4d8; }
+  .dot:nth-child(1) { background: #fca5a5; }
+  .dot:nth-child(2) { background: #fcd34d; }
+  .dot:nth-child(3) { background: #86efac; }
+  .url {
+    flex: 1; max-width: 340px; margin: 0 auto; height: 22px; border-radius: 6px;
+    background: #fff; border: 1px solid var(--line); color: #a1a1aa;
+    font: 11px/22px var(--mono); text-align: center; overflow: hidden; white-space: nowrap;
+  }
+  .app { display: flex; height: 670px; background: #f8fafc; }
+
+  /* ===== Sidebar commune ===== */
+  .side {
+    width: var(--side); flex: none; display: flex; flex-direction: column;
+    background: #fff; border-right: 1px solid var(--line);
+  }
+  .brand { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .brand-logo {
+    width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 13px; background: linear-gradient(135deg, #6366f1, #a855f7);
+    box-shadow: 0 4px 10px -4px rgba(79,70,229,.65);
+  }
+  .brand-name { font-weight: 750; letter-spacing: -.01em; font-size: 15px; }
+  .brand-name small { display: block; font-size: 10px; font-weight: 600; color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
+
+  .search {
+    margin: 12px 12px 8px; height: 34px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel-2); color: var(--faint); display: flex; align-items: center; gap: 8px;
+    padding: 0 9px; font-size: 12px;
+  }
+  .search kbd {
+    margin-left: auto; font: 10px/1 var(--mono); color: #71717a; background: #fff;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 3px 5px;
+  }
+  .nav { flex: 1; overflow: hidden; padding: 4px 10px 10px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 7px 9px;
+    border-radius: 7px; color: #52525b; font-size: 13px; font-weight: 550; text-decoration: none;
+  }
+  .nav-item .icon { width: 16px; height: 16px; flex: none; color: #71717a; }
+  .nav-item .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-item:hover { background: #f4f4f5; color: var(--ink); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+  .nav-item.active .icon { color: var(--accent); }
+  .badge {
+    font: 650 10px/1 var(--font); min-width: 18px; height: 18px; border-radius: 999px;
+    display: inline-grid; place-items: center; padding: 0 5px; background: #fee2e2; color: #b91c1c;
+  }
+  .nav-sep { height: 1px; background: var(--line); margin: 8px 8px; }
+  .nav-caption {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 9px 4px; color: #a1a1aa; font-size: 10px; font-weight: 750;
+    letter-spacing: .11em; text-transform: uppercase;
+  }
+  .side-foot { border-top: 1px solid var(--line); padding: 9px 10px; }
+  .who { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; color: #52525b; font-size: 12px; }
+  .who:hover { background: #f4f4f5; }
+  .avatar {
+    width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; font-size: 10px; font-weight: 800; flex: none;
+  }
+
+  /* ===== Contenu ===== */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #f8fafc; }
+  .topbar {
+    height: 60px; flex: none; display: flex; align-items: center; gap: 12px;
+    padding: 0 22px; border-bottom: 1px solid var(--line); background: #fff;
+  }
+  .topbar .crumb { font-size: 12px; color: var(--faint); }
+  .topbar .crumb b { color: #3f3f46; }
+  .topbar .spacer { flex: 1; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--line);
+    background: #fff; display: grid; place-items: center; color: #71717a;
+  }
+  .topbar .avatar { width: 30px; height: 30px; }
+  .content { flex: 1; overflow: hidden; padding: 21px 22px; }
+  .page-title { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+  .page-sub { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin: 16px 0 13px; }
+  .input {
+    height: 33px; flex: 1; max-width: 290px; border: 1px solid var(--line); border-radius: 7px;
+    background: #fff; display: flex; align-items: center; gap: 7px; padding: 0 9px;
+    color: var(--faint); font-size: 12px;
+  }
+  .btn {
+    height: 33px; padding: 0 12px; border-radius: 7px; display: inline-flex; align-items: center; gap: 7px;
+    font: 650 12px/1 var(--font); border: 1px solid var(--line); background: #fff; color: #3f3f46;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-bottom: 13px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 12px; }
+  .card .hint { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  .card .value { margin-top: 5px; font-size: 21px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .card .delta { margin-top: 2px; font-size: 11px; color: var(--ok); }
+  .table { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .tr { display: grid; grid-template-columns: 1.5fr 1fr .7fr .6fr; gap: 10px; align-items: center; padding: 10px 13px; border-top: 1px solid var(--line); font-size: 12px; }
+  .tr:first-child { border-top: 0; background: #fafafa; color: var(--faint); font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+  .cell-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .cell-name .avatar { width: 24px; height: 24px; font-size: 9px; }
+  .muted { color: var(--muted); }
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; color: var(--ok); }
+  .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status.warn { color: var(--amber); }
+
+  /* ===== Stratégie A — sections repliables ===== */
+  .group { margin-top: 2px; }
+  .group > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    min-height: 32px; padding: 6px 9px; border-radius: 7px; color: #71717a;
+    font-size: 11px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase;
+  }
+  .group > summary::-webkit-details-marker { display: none; }
+  .group > summary:hover { background: #f4f4f5; color: #3f3f46; }
+  .group > summary .chev { width: 13px; height: 13px; margin-left: auto; transition: transform .16s ease; color: #a1a1aa; }
+  .group[open] > summary .chev { transform: rotate(90deg); }
+  .group .items { padding: 2px 0 4px 8px; border-left: 1px solid var(--line); margin-left: 10px; }
+  .group .nav-item { min-height: 32px; font-size: 12.5px; padding: 5px 8px; }
+  .group .nav-item .icon { width: 15px; height: 15px; }
+  .pinned-note { font-size: 10px; color: var(--faint); padding: 4px 9px 2px; }
+
+  /* ===== Stratégie B — rail + panneau ===== */
+  .rail {
+    width: var(--rail); flex: none; background: #fff; border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; padding: 10px 0;
+  }
+  .rail .brand { width: 100%; height: 52px; padding: 0; justify-content: center; border-bottom: 0; }
+  .rail .brand-name { display: none; }
+  .rail-btn {
+    width: 46px; height: 44px; border-radius: 10px; display: grid; place-items: center;
+    color: #71717a; margin: 3px 0; position: relative;
+  }
+  .rail-btn .icon { width: 19px; height: 19px; }
+  .rail-btn.active { background: var(--accent-soft); color: var(--accent); }
+  .rail-btn.active::before {
+    content: ""; position: absolute; left: -10px; top: 10px; bottom: 10px; width: 3px;
+    border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .rail-btn .dot-badge {
+    position: absolute; top: 7px; right: 6px; min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 999px; background: #ef4444; color: #fff; font: 700 9px/14px var(--font);
+    text-align: center; border: 2px solid #fff; box-sizing: content-box;
+  }
+  .rail-btn .tip {
+    position: absolute; left: 52px; top: 50%; transform: translateY(-50%); z-index: 3;
+    background: #18181b; color: #fff; font: 600 11px/1 var(--font); padding: 6px 8px;
+    border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s;
+  }
+  .rail-btn:hover .tip { opacity: 1; }
+  .rail-foot { margin-top: auto; }
+  .panel { width: 212px; flex: none; background: #fcfcfd; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .panel-head { padding: 19px 16px 9px; }
+  .panel-head .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; color: var(--faint); }
+  .panel-head h3 { margin: 3px 0 0; font-size: 16px; letter-spacing: -.02em; }
+  .panel .nav { padding: 4px 10px; }
+  .panel .nav-item { min-height: 34px; font-size: 12.5px; }
+  .context-strip {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 8px 10px 0;
+    border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: 11px; border: 1px solid #fed7aa;
+  }
+
+  /* ===== Stratégie C — hub ===== */
+  .hub-nav .nav-item { min-height: 38px; }
+  .hub-tabs {
+    display: flex; gap: 18px; border-bottom: 1px solid var(--line); margin: 15px 0 16px;
+    padding: 0 2px; overflow: hidden;
+  }
+  .hub-tab {
+    padding: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--muted);
+    border-bottom: 2px solid transparent; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .hub-tab.active { color: var(--accent-ink); border-color: var(--accent); }
+  .hub-tab .badge { height: 16px; font-size: 9px; background: #fee2e2; }
+  .hub-hero {
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    background: linear-gradient(120deg, #eef2ff, #faf5ff); border: 1px solid #ddd6fe;
+    border-radius: 10px; padding: 13px 14px; margin-bottom: 13px;
+  }
+  .hub-hero p { margin: 2px 0 0; color: #52525b; font-size: 11.5px; }
+  .hub-hero strong { font-size: 13px; }
+  .hub-count { font-size: 22px; font-weight: 800; letter-spacing: -.03em; color: var(--accent-ink); }
+
+  /* ===== Panneau de droite ===== */
+  .notes { display: flex; flex-direction: column; gap: 12px; }
+  .note-card { background: rgba(255,255,255,.88); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; backdrop-filter: blur(8px); }
+  .note-card h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: #71717a; }
+  .note-card p { margin: 0; color: #3f3f46; font-size: 12.5px; }
+  .note-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  .note-card li { display: flex; gap: 8px; color: #3f3f46; font-size: 12.5px; }
+  .note-card li .tick { color: var(--ok); flex: none; font-weight: 800; }
+  .note-card li .cross { color: var(--danger); flex: none; font-weight: 800; }
+  .note-card .k { color: var(--ink); font-weight: 700; }
+  .note-card.accent { background: #18181b; border-color: #18181b; color: #e4e4e7; }
+  .note-card.accent h3 { color: #a1a1aa; }
+  .note-card.accent p, .note-card.accent li { color: #d4d4d8; }
+  .note-card.accent .k { color: #fff; }
+  .score { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12px; color: #52525b; }
+  .score b { font-variant-numeric: tabular-nums; color: var(--ink); }
+  .meter { height: 5px; border-radius: 99px; background: #e4e4e7; overflow: hidden; margin-top: 2px; }
+  .meter > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+  .meter.green > i { background: #22c55e; }
+  .meter.amber > i { background: #f59e0b; }
+  .meter.red > i { background: #ef4444; }
+
+  .strategy-caption { margin: 13px 2px 0; color: #71717a; font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .strategy-caption b { color: #3f3f46; }
+
+  /* ===== Diagnostic ===== */
+  .diagnostic { margin-top: 34px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .diagnostic { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: rgba(255,255,255,.86); border: 1px solid var(--line); border-radius: 12px; padding: 15px; }
+  .stat .n { font-size: 27px; font-weight: 800; letter-spacing: -.04em; }
+  .stat .l { margin-top: 2px; color: #71717a; font-size: 12px; }
+  .stat .warn { color: var(--amber); }
+
+  .compare { margin-top: 30px; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 6px 22px -16px rgba(24,24,27,.25); }
+  .compare h2 { margin: 0; padding: 18px 20px 0; font-size: 17px; letter-spacing: -.02em; }
+  .compare .sub { margin: 4px 20px 14px; color: var(--muted); font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 11px 20px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { background: #fafafa; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #71717a; }
+  td:first-child { color: #3f3f46; font-weight: 650; width: 22%; }
+  .tag-good { color: var(--ok); font-weight: 700; }
+  .tag-mid { color: var(--amber); font-weight: 700; }
+  .tag-bad { color: var(--danger); font-weight: 700; }
+
+  .footer { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); color: #a1a1aa; font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
+  .footer code { font: 11px var(--mono); color: #71717a; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1"/><circle cx="17" cy="9" r="2.2"/><path d="M21 20v-1a4.5 4.5 0 0 0-4-4.4"/></symbol>
+  <symbol id="i-groups" viewBox="0 0 24 24"><circle cx="8" cy="9" r="2.5"/><circle cx="16" cy="9" r="2.5"/><path d="M3 20v-1a5 5 0 0 1 10 0v1M14 19v-1a4 4 0 0 1 7-2.5"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-3v10l-6-3"/></symbol>
+  <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M14 8a5 5 0 0 1 0 8M17 5a9 9 0 0 1 0 14"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.7A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11Z"/></symbol>
+  <symbol id="i-sticker" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-8-8h5l3 3v5Z"/><path d="M12 20v-5a3 3 0 0 1 3-3h5"/><path d="M9 10h.01M15 10h.01M9.5 14a4 4 0 0 0 5 0"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-1.5 4L16 12H5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 16-5-5-9 9"/></symbol>
+  <symbol id="i-fingerprint" viewBox="0 0 24 24"><path d="M7 20a12 12 0 0 0 1-6V9M17 20a12 12 0 0 1-1-6V9M4.5 14a10 10 0 0 1 .5-3 7 7 0 0 1 14 0c.3 1.4.4 2.7.4 4M9 20a16 16 0 0 0 .6-4.5M15 20a16 16 0 0 1-.6-4.5"/></symbol>
+  <symbol id="i-vault" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v2M12 14v2M8 12h2M14 12h2"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6M5 11.5v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M15 4h4v4M13 7l3 3"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m4 16 7-7 7 7-4 4H8l-4-4Z"/><path d="m13 7 4-4 7 7-4 4M3 21h18"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M7 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V6a2 2 0 0 1 4 0v13"/><path d="M10 8h7M10 12h7M10 16h4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2.1 2.1-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V20h-3v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2.1-2.1.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H4v-3h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1 2.1-2.1.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V4h3v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2.1 2.1-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.1v3h-.1a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h5a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h7"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 6-3 7-3 7h18s-3-1-3-7M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 10v10h14V10"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3.5 8 7 10 3.5-2 7-5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+</svg>
+
+<div class="page">
+  <span class="kicker">Admin Alanya · Architecture de l'information</span>
+  <h1>Moins d'entrées, plus de repères.</h1>
+  <p class="lede">
+    La barre latérale compte aujourd'hui <strong>22 entrées</strong>, dont trois mènent au même profil,
+    et mélange pilotage, modération, données et système. Voici trois stratégies de regroupement,
+    avec leur maquette, leur coût et leurs compromis.
+  </p>
+
+  <div class="tabs" role="tablist" aria-label="Stratégies de navigation">
+    <button class="tab" id="tab-a" role="tab" aria-selected="true" aria-controls="strategy-a" data-target="strategy-a">
+      <span class="num">A</span> Sections repliables <span class="tag">Recommandée</span>
+    </button>
+    <button class="tab" id="tab-b" role="tab" aria-selected="false" aria-controls="strategy-b" data-target="strategy-b">
+      <span class="num">B</span> Rail + sous-menu
+    </button>
+    <button class="tab" id="tab-c" role="tab" aria-selected="false" aria-controls="strategy-c" data-target="strategy-c">
+      <span class="num">C</span> Hubs métier
+    </button>
+  </div>
+
+  <!-- ========================================================= A -->
+  <section class="strategy active" id="strategy-a" role="tabpanel" aria-labelledby="tab-a">
+    <div class="strategy-head">
+      <div>
+        <h2>A. Sections repliables + trois raccourcis épinglés</h2>
+        <p>Les trois vues quotidiennes restent visibles. Le reste se range en cinq sections dépliables,
+        dont celle de la page courante s'ouvre automatiquement.</p>
+      </div>
+      <div class="pill-row">
+        <span class="pill indigo">9 points d'entrée au repos</span>
+        <span class="pill">Effort : faible</span>
+        <span class="pill">Risque : faible</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="window">
+          <div class="chrome"><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span><span class="url">admin.alanya237.com/users</span></div>
+          <div class="app">
+            <aside class="side">
+              <div class="brand"><span class="brand-logo">A</span><span class="brand-name">Alanya Admin<small>Console</small></span></div>
+              <div class="search"><svg class="icon" width="14" height="14"><use href="#i-search"/></svg><span>Rechercher une page…</span><kbd>⌘K</kbd></div>
+              <div class="nav">
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-dashboard"/></svg><span class="label">Dashboard</span></a>
+                <a class="nav-item active" href="#"><svg class="icon"><use href="#i-users"/></svg><span class="label">Utilisateurs</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-flag"/></svg><span class="label">Signalements</span><span class="badge">4</span></a>
+                <div class="nav-sep"></div>
+
+                <details class="group">
+                  <summary>Pilotage <svg class="chev"><use href="#i-chev"/></svg></summary>
+                  <div class="items">
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-chart"/></svg><span class="label">Analytics</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-pin"/></svg><span class="label">Géolocalisation</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-pulse"/></svg><span class="label">Santé du service</span></a>
+                  </div>
+                </details>
+
+                <details class="group">
+                  <summary>Communauté <svg class="chev"><use href="#i-chev"/></svg></summary>
+                  <div class="items">
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-groups"/></svg><span class="label">Groupes</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-video"/></svg><span class="label">Réunions</span></a>
+                  </div>
+                </details>
+
+                <details class="group">
+                  <summary>Contenus &amp; diffusion <svg class="chev"><use href="#i-chev"/></svg></summary>
+                  <div class="items">
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-megaphone"/></svg><span class="label">Diffusions</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-heart"/></svg><span class="label">Bienvenue</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-sticker"/></svg><span class="label">Stickers</span></a>
+                  </div>
+                </details>
+
+                <details class="group" open>
+                  <summary>Confiance &amp; sécurité <svg class="chev"><use href="#i-chev"/></svg></summary>
+                  <div class="items">
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-route"/></svg><span class="label">Trajets</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-image"/></svg><span class="label">Médias</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-fingerprint"/></svg><span class="label">Documents sensibles</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-vault"/></svg><span class="label">Coffre-fort</span></a>
+                  </div>
+                </details>
+
+                <details class="group">
+                  <summary>Système &amp; données <svg class="chev"><use href="#i-chev"/></svg></summary>
+                  <div class="items">
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-database"/></svg><span class="label">Sauvegardes</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-key"/></svg><span class="label">Clés de sauvegarde</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-eraser"/></svg><span class="label">Purges</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-scroll"/></svg><span class="label">Activité admin</span></a>
+                    <a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg><span class="label">Paramètres</span></a>
+                  </div>
+                </details>
+
+                <div class="nav-sep"></div>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-card"/></svg><span class="label">Abonnement</span></a>
+              </div>
+              <div class="side-foot">
+                <div class="who"><span class="avatar">CM</span><span>Chris M.</span></div>
+              </div>
+            </aside>
+
+            <div class="main">
+              <div class="topbar">
+                <span class="crumb">Admin / <b>Utilisateurs</b></span>
+                <span class="spacer"></span>
+                <span class="icon-btn"><svg class="icon" width="15" height="15"><use href="#i-bell"/></svg></span>
+                <span class="avatar">CM</span>
+              </div>
+              <div class="content">
+                <h3 class="page-title">Utilisateurs</h3>
+                <p class="page-sub">12 483 comptes · 327 en ligne · 96 signalés cette semaine</p>
+                <div class="toolbar">
+                  <span class="input"><svg width="14" height="14"><use href="#i-search"/></svg>Rechercher un nom, un alanyaID…</span>
+                  <span class="btn"><svg width="14" height="14"><use href="#i-filter"/></svg>Filtres</span>
+                  <span class="btn primary"><svg width="14" height="14"><use href="#i-plus"/></svg>Nouveau compte</span>
+                </div>
+                <div class="table">
+                  <div class="tr"><span>Compte</span><span>Pays</span><span>Dernière activité</span><span>Statut</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar">JD</span>Jean Dupont</span><span class="muted">France</span><span class="muted">il y a 2 min</span><span class="status">En ligne</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">MK</span>Marie K.</span><span class="muted">Côte d'Ivoire</span><span class="muted">il y a 14 min</span><span class="status warn">Signalé</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#0ea5e9,#22c55e)">PB</span>Paul B.</span><span class="muted">Cameroun</span><span class="muted">hier</span><span class="status" style="color:#71717a">Hors ligne</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#a855f7,#ec4899)">SL</span>Sophie L.</span><span class="muted">France</span><span class="muted">il y a 1 h</span><span class="status">En ligne</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#14b8a6,#0ea5e9)">LM</span>Lucas M.</span><span class="muted">Sénégal</span><span class="muted">il y a 3 h</span><span class="status warn">Signalé</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="strategy-caption">
+          <span><b>①</b> 3 destinations quotidiennes épinglées</span>
+          <span><b>②</b> 5 sections, 7±2 objets à scanner</span>
+          <span><b>③</b> section active ouverte</span>
+          <span><b>④</b> recherche ⌘K pour les cas rares</span>
+          <span><b>⑤</b> profil uniquement en bas (fin du doublon)</span>
+        </div>
+      </div>
+
+      <aside class="notes">
+        <div class="note-card">
+          <h3>Pourquoi ça marche</h3>
+          <ul>
+            <li><span class="tick">✓</span><span>Réduit la charge de choix sans cacher les vues fréquentes : <span class="k">Hick + fréquence d'usage</span>.</span></li>
+            <li><span class="tick">✓</span><span>Chaque section garde ses entrées à un clic, la profondeur reste à 2 niveaux.</span></li>
+            <li><span class="tick">✓</span><span>Les permissions restent inchangées : on ne filtre que ce que le compte peut déjà voir.</span></li>
+            <li><span class="tick">✓</span><span>La section ouverte est mémorisée par navigateur ; la page courante force la sienne.</span></li>
+          </ul>
+        </div>
+        <div class="note-card">
+          <h3>Points de vigilance</h3>
+          <ul>
+            <li><span class="cross">!</span><span>Ne pas dépasser 5 groupes de plus de 5 entrées.</span></li>
+            <li><span class="cross">!</span><span>Toujours afficher l'état actif, même section repliée.</span></li>
+            <li><span class="cross">!</span><span>Un groupe replié reste un bouton de 40 px minimum.</span></li>
+          </ul>
+        </div>
+        <div class="note-card accent">
+          <h3>Verdict</h3>
+          <p>Le meilleur rapport impact / risque. <span class="k">À faire maintenant</span> : 1 à 2 jours de dev, aucune URL ne change.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========================================================= B -->
+  <section class="strategy" id="strategy-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+    <div class="strategy-head">
+      <div>
+        <h2>B. Rail de domaines + panneau contextuel</h2>
+        <p>Six domaines seulement dans un rail étroit ; le panneau voisin n'affiche que les pages du domaine
+        sélectionné. L'interface gagne en profondeur sans allonger la navigation.</p>
+      </div>
+      <div class="pill-row">
+        <span class="pill indigo">6 domaines visibles</span>
+        <span class="pill">Effort : moyen</span>
+        <span class="pill">Scalable jusqu'à ~40 pages</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="window">
+          <div class="chrome"><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span><span class="url">admin.alanya237.com/community/groups</span></div>
+          <div class="app">
+            <div class="rail">
+              <div class="brand"><span class="brand-logo">A</span></div>
+              <div class="rail-btn"><svg class="icon"><use href="#i-dashboard"/></svg><span class="tip">Pilotage</span></div>
+              <div class="rail-btn active"><svg class="icon"><use href="#i-users"/></svg><span class="tip">Communauté</span></div>
+              <div class="rail-btn"><svg class="icon"><use href="#i-megaphone"/></svg><span class="tip">Contenus &amp; diffusion</span></div>
+              <div class="rail-btn"><svg class="icon"><use href="#i-shield"/></svg><span class="dot-badge">4</span><span class="tip">Confiance &amp; sécurité</span></div>
+              <div class="rail-btn"><svg class="icon"><use href="#i-database"/></svg><span class="tip">Système &amp; données</span></div>
+              <div class="rail-btn"><svg class="icon"><use href="#i-card"/></svg><span class="tip">Abonnement</span></div>
+              <div class="rail-foot"><div class="rail-btn"><svg class="icon"><use href="#i-chev"/></svg><span class="tip">Replier</span></div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><div class="eyebrow">Domaine</div><h3>Communauté</h3></div>
+              <div class="nav">
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg><span class="label">Utilisateurs</span></a>
+                <a class="nav-item active" href="#"><svg class="icon"><use href="#i-groups"/></svg><span class="label">Groupes</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-video"/></svg><span class="label">Réunions</span></a>
+              </div>
+              <div class="context-strip"><svg width="13" height="13"><use href="#i-pulse"/></svg>2 groupes sans modérateur</div>
+            </div>
+            <div class="main">
+              <div class="topbar">
+                <span class="crumb">Communauté / <b>Groupes</b></span>
+                <span class="spacer"></span>
+                <span class="icon-btn"><svg class="icon" width="15" height="15"><use href="#i-bell"/></svg></span>
+                <span class="avatar">CM</span>
+              </div>
+              <div class="content">
+                <h3 class="page-title">Groupes</h3>
+                <p class="page-sub">1 208 groupes · 64 actifs cette semaine</p>
+                <div class="toolbar">
+                  <span class="input"><svg width="14" height="14"><use href="#i-search"/></svg>Rechercher un groupe…</span>
+                  <span class="btn"><svg width="14" height="14"><use href="#i-filter"/></svg>Filtres</span>
+                </div>
+                <div class="cards">
+                  <div class="card"><div class="hint">Membres</div><div class="value">18 942</div><div class="delta">+3,2 %</div></div>
+                  <div class="card"><div class="hint">Messages / 7 j</div><div class="value">92 410</div><div class="delta">+8,1 %</div></div>
+                  <div class="card"><div class="hint">Sans modérateur</div><div class="value" style="color:#b45309">2</div><div class="delta" style="color:#b45309">Action requise</div></div>
+                </div>
+                <div class="table">
+                  <div class="tr"><span>Groupe</span><span>Membres</span><span>Dernier message</span><span>Statut</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#6366f1,#a855f7)">FA</span>Famille Alanya</span><span>248</span><span class="muted">il y a 4 min</span><span class="status">Actif</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">VO</span>Voyage Douala</span><span>96</span><span class="muted">il y a 1 h</span><span class="status">Actif</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#14b8a6,#0ea5e9)">EN</span>Entraide études</span><span>412</span><span class="muted">hier</span><span class="status warn">À modérer</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#a855f7,#ec4899)">SP</span>Sport &amp; santé</span><span>63</span><span class="muted">il y a 2 j</span><span class="status" style="color:#71717a">Inactif</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="strategy-caption">
+          <span><b>①</b> un domaine = une icône</span>
+          <span><b>②</b> pages du domaine au second niveau</span>
+          <span><b>③</b> fil d'Ariane permanent</span>
+          <span><b>④</b> alerte contextuelle dans le panneau</span>
+        </div>
+      </div>
+
+      <aside class="notes">
+        <div class="note-card">
+          <h3>Pourquoi ça marche</h3>
+          <ul>
+            <li><span class="tick">✓</span><span>Deux niveaux maximum, 6 choix au premier : la charge cognitive reste stable même à 40 pages.</span></li>
+            <li><span class="tick">✓</span><span>Le panneau peut porter des alertes de domaine (2 groupes sans modérateur), impossible dans une liste plate.</span></li>
+            <li><span class="tick">✓</span><span>Les icônes du rail deviennent des raccourcis mémorisables ; les libellés restent en tooltip + panneau.</span></li>
+          </ul>
+        </div>
+        <div class="note-card">
+          <h3>Points de vigilance</h3>
+          <ul>
+            <li><span class="cross">!</span><span>Deux clics pour une page profonde : acceptable si les domaines sont stables.</span></li>
+            <li><span class="cross">!</span><span>La largeur totale augmente (rail + panneau) : prévoir un mode compact.</span></li>
+            <li><span class="cross">!</span><span>Sur mobile, le rail devient un simple tiroir à deux écrans.</span></li>
+          </ul>
+        </div>
+        <div class="note-card accent">
+          <h3>Verdict</h3>
+          <p>À choisir si l'admin doit <span class="k">encore grandir</span>. Plus structurant que A, mais plus de code et un nouvel apprentissage.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========================================================= C -->
+  <section class="strategy" id="strategy-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+    <div class="strategy-head">
+      <div>
+        <h2>C. Hubs métier + onglets de section</h2>
+        <p>Sept destinations principales, et chaque famille devient une page hub avec ses onglets.
+        La navigation ne bouge plus quand une page s'ajoute : elle s'ajoute dans le hub.</p>
+      </div>
+      <div class="pill-row">
+        <span class="pill indigo">7 entrées, jamais plus</span>
+        <span class="pill">Effort : élevé</span>
+        <span class="pill">Dette : redirections</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="window">
+          <div class="chrome"><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span><span class="url">admin.alanya237.com/moderation</span></div>
+          <div class="app">
+            <aside class="side">
+              <div class="brand"><span class="brand-logo">A</span><span class="brand-name">Alanya Admin<small>Console</small></span></div>
+              <div class="search"><svg class="icon" width="14" height="14"><use href="#i-search"/></svg><span>Rechercher une page…</span><kbd>⌘K</kbd></div>
+              <div class="nav hub-nav">
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-home"/></svg><span class="label">Vue d'ensemble</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-users"/></svg><span class="label">Utilisateurs</span></a>
+                <a class="nav-item active" href="#"><svg class="icon"><use href="#i-shield"/></svg><span class="label">Modération</span><span class="badge">4</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-megaphone"/></svg><span class="label">Contenus</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-route"/></svg><span class="label">Opérations</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-database"/></svg><span class="label">Données</span></a>
+                <a class="nav-item" href="#"><svg class="icon"><use href="#i-settings"/></svg><span class="label">Paramètres</span></a>
+              </div>
+              <div class="side-foot"><div class="who"><span class="avatar">CM</span><span>Chris M.</span></div></div>
+            </aside>
+            <div class="main">
+              <div class="topbar">
+                <span class="crumb">Admin / <b>Modération</b></span>
+                <span class="spacer"></span>
+                <span class="icon-btn"><svg class="icon" width="15" height="15"><use href="#i-bell"/></svg></span>
+                <span class="avatar">CM</span>
+              </div>
+              <div class="content">
+                <h3 class="page-title">Modération</h3>
+                <p class="page-sub">Tout ce qui protège les comptes et les contenus</p>
+                <div class="hub-tabs">
+                  <span class="hub-tab active">Signalements <span class="badge">4</span></span>
+                  <span class="hub-tab">Médias</span>
+                  <span class="hub-tab">Documents sensibles</span>
+                  <span class="hub-tab">Coffre-fort</span>
+                </div>
+                <div class="hub-hero">
+                  <div><strong>4 signalements à traiter</strong><p>Le plus ancien date d'il y a 3 h · priorité haute</p></div>
+                  <div class="hub-count">4</div>
+                </div>
+                <div class="cards">
+                  <div class="card"><div class="hint">À traiter</div><div class="value">4</div><div class="delta" style="color:#b45309">Sous 24 h</div></div>
+                  <div class="card"><div class="hint">Traités / 7 j</div><div class="value">61</div><div class="delta">+12 %</div></div>
+                  <div class="card"><div class="hint">Délai médian</div><div class="value">2 h 14</div><div class="delta">−18 min</div></div>
+                </div>
+                <div class="table">
+                  <div class="tr"><span>Signalement</span><span>Type</span><span>Ancienneté</span><span>Statut</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">SP</span>Spam dans un groupe</span><span class="muted">Contenu</span><span class="muted">3 h</span><span class="status warn">À traiter</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#6366f1,#a855f7)">CO</span>Comportement agressif</span><span class="muted">Compte</span><span class="muted">5 h</span><span class="status warn">À traiter</span></div>
+                  <div class="tr"><span class="cell-name"><span class="avatar" style="background:linear-gradient(135deg,#14b8a6,#0ea5e9)">US</span>Usurpation d'identité</span><span class="muted">Compte</span><span class="muted">hier</span><span class="status">En revue</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="strategy-caption">
+          <span><b>①</b> 7 destinations stables</span>
+          <span><b>②</b> onglets = pages existantes</span>
+          <span><b>③</b> KPI du domaine sur le hub</span>
+          <span><b>④</b> URLs conservées + redirections</span>
+        </div>
+      </div>
+
+      <aside class="notes">
+        <div class="note-card">
+          <h3>Pourquoi ça marche</h3>
+          <ul>
+            <li><span class="tick">✓</span><span>La navigation devient indépendante du nombre de pages : elle ne bougera plus.</span></li>
+            <li><span class="tick">✓</span><span>Chaque famille a un lieu qui lui ressemble, avec ses indicateurs et son vocabulaire.</span></li>
+            <li><span class="tick">✓</span><span>Le modèle existant « sous-navigation » (Abonnement, Stickers) est déjà dans le code : on le généralise.</span></li>
+          </ul>
+        </div>
+        <div class="note-card">
+          <h3>Points de vigilance</h3>
+          <ul>
+            <li><span class="cross">!</span><span>Refonte plus lourde : pages hub, redirections, permissions et tests.</span></li>
+            <li><span class="cross">!</span><span>Ne pas mettre 8 onglets : au-delà de 5, préférer des sous-sections.</span></li>
+            <li><span class="cross">!</span><span>Les liens externes et favoris existants doivent continuer à fonctionner.</span></li>
+          </ul>
+        </div>
+        <div class="note-card accent">
+          <h3>Verdict</h3>
+          <p>La <span class="k">cible long terme</span>. À mener hub par hub, en commençant par Modération et Données, sans big bang.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========================================================= Diagnostic -->
+  <div class="diagnostic">
+    <div class="stat"><div class="n">22</div><div class="l">entrées dans la barre aujourd'hui</div></div>
+    <div class="stat"><div class="n">≈ 940 <span style="font-size:15px;font-weight:600">px</span></div><div class="l">hauteur nécessaire : la barre défile sur un écran 900 px</div></div>
+    <div class="stat"><div class="n warn">3</div><div class="l">liens vers « Mon profil » (menu, en-tête, pied)</div></div>
+    <div class="stat"><div class="n">9</div><div class="l">points d'entrée visibles au repos avec la stratégie A</div></div>
+  </div>
+
+  <div class="compare">
+    <h2>Comparer les trois pistes</h2>
+    <p class="sub">Les trois conservent les mêmes permissions et les mêmes pages. Seul le chemin change.</p>
+    <table>
+      <thead>
+        <tr><th>Critère</th><th>A. Sections repliables</th><th>B. Rail + sous-menu</th><th>C. Hubs métier</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Entrées visibles au repos</td>
+          <td><span class="tag-good">9</span> (3 épinglées + 5 sections + abonnement)</td>
+          <td><span class="tag-good">6 domaines</span> + 2 à 5 pages du domaine actif</td>
+          <td><span class="tag-good">7</span> destinations stables</td>
+        </tr>
+        <tr>
+          <td>Clics vers une page profonde</td>
+          <td><span class="tag-good">1 à 2</span> (déplier puis cliquer)</td>
+          <td><span class="tag-mid">2</span> (domaine puis page)</td>
+          <td><span class="tag-good">1 à 2</span> (page ou onglet)</td>
+        </tr>
+        <tr>
+          <td>Scalabilité</td>
+          <td><span class="tag-mid">Moyenne</span> : un groupe de plus par famille</td>
+          <td><span class="tag-good">Forte</span> : le rail ne bouge pas</td>
+          <td><span class="tag-good">Forte</span> : les pages s'ajoutent en onglets</td>
+        </tr>
+        <tr>
+          <td>Effort de mise en œuvre</td>
+          <td><span class="tag-good">Faible</span> · 1 à 2 jours</td>
+          <td><span class="tag-mid">Moyen</span> · 3 à 5 jours</td>
+          <td><span class="tag-bad">Élevé</span> · 1 à 2 semaines</td>
+        </tr>
+        <tr>
+          <td>Risque de régression</td>
+          <td><span class="tag-good">Faible</span> : aucune URL ne change</td>
+          <td><span class="tag-mid">Moyen</span> : état de navigation à gérer</td>
+          <td><span class="tag-bad">Élevé</span> : redirections et pages hub</td>
+        </tr>
+        <tr>
+          <td>Accessibilité</td>
+          <td><span class="tag-good">Native</span> : <code>&lt;details&gt;</code>, focus conservé</td>
+          <td><span class="tag-mid">À soigner</span> : rail, tooltips, focus</td>
+          <td><span class="tag-good">Bonne</span> : liens et onglets classiques</td>
+        </tr>
+        <tr>
+          <td>Quand la choisir</td>
+          <td><span class="tag-good">Maintenant</span>, pour un gain immédiat</td>
+          <td>Si l'admin doit doubler de taille</td>
+          <td>Si l'on veut une navigation définitive</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>Maquettes statiques — mêmes composants, couleurs et densité que l'admin actuel.</span>
+    <span><code>idées/navigation-admin.html</code></span>
+  </div>
+</div>
+
+<script>
+  const tabs = [...document.querySelectorAll('.tab')];
+  const panels = [...document.querySelectorAll('.strategy')];
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      panels.forEach((p) => {
+        const active = p.id === tab.dataset.target;
+        p.classList.toggle('active', active);
+        if (active) p.removeAttribute('hidden');
+        else p.setAttribute('hidden', '');
+      });
+    });
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const i = tabs.indexOf(tab);
+      const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      next.focus();
+      next.click();
+    });
+  });
+</script>
+</body>
+</html>
