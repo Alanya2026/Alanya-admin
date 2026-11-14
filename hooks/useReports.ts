@@ -27,12 +27,15 @@ export function useReports(params: ReportsParams = {}) {
  * dédié invalide le widget, et l'inverse. Le serveur renvoie aussi `open`,
  * le décompte total — plus fiable que `items.length`, plafonné au `limit`.
  */
-export function useOpenReports(limit = 4) {
+export function useOpenReports(limit = 4, enabled = true) {
   return useQuery({
     queryKey: ['admin-reports', { state: 'open', page: 1, limit }],
     queryFn: () => fetchReports({ state: 'open', page: 1, limit }),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
+    // Le badge du menu ne doit pas interroger la file pour un compte qui n'a
+    // pas `reports.read` : la requête répondrait 403 à chaque page.
+    enabled,
   });
 }
 

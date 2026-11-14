@@ -1,91 +1,71 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  BarChart3,
-  Users,
-  UsersRound,
-  Video,
-  Image as ImageIcon,
-  Settings,
-  MapPin,
-  Route,
-  LogOut,
-  ChevronLeft,
-  Menu,
-  Megaphone,
-  UserCircle,
-  HandHeart,
-  Eraser,
-  HeartPulse,
-  ScrollText,
-  KeyRound,
-  DatabaseBackup,
-  Flag,
-  CreditCard,
-  Sticker,
-  Fingerprint,
-  Vault,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, LogOut, Menu, UserCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
 import { cn } from "@/lib/utils";
 import { isAuthenticated, adminLogout, getAdminUser } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useOpenReports } from "@/hooks/useReports";
+import {
+  NAV_GROUPS,
+  NAV_OPEN_STORAGE_KEY,
+  PINNED_NAV,
+  SECONDARY_NAV,
+  findActiveGroup,
+  isNavItemActive,
+  keepKnownGroupIds,
+  visibleGroups,
+  type NavItem,
+} from "@/lib/nav";
 import { useEffect, useState } from "react";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 /**
- * La navigation se filtre sur les mêmes permissions que les routes du serveur,
- * lues depuis `/admin/me`. Une entrée qui mènerait à une page répondant 403
- * apprend à l'équipe à ignorer les erreurs — mieux vaut ne pas l'afficher.
+ * Une entrée de navigation. `aria-current` porte l'état actif : la couleur
+ * seule ne dit rien à un lecteur d'écran, et une section repliée doit tout de
+ * même annoncer qu'elle contient la page courante.
  */
-const navItemsAll = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "stats.read" },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, permission: "stats.read" },
-  { href: "/trips", label: "Trajets", icon: Route, permission: "trips.read" },
-  { href: "/users", label: "Utilisateurs", icon: Users, permission: "users.read" },
-  // Lecture au niveau admin ; les réglages et les plans exigent billing.settings
-  // et billing.plans, vérifiés par la page et par le serveur.
-  { href: "/billing", label: "Abonnement", icon: CreditCard, permission: "billing.read" },
-  // Vérifications : pages conservées hors menu (comptes business plus tard).
-  { href: "/groups", label: "Groupes", icon: UsersRound, permission: "groups.read" },
-  { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
-  { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
-  { href: "/documents-sensibles", label: "Documents sensibles", icon: Fingerprint, permission: "documents.trace" },
-  { href: "/safebox", label: "Coffre-fort", icon: Vault, permission: "safebox.read" },
-  { href: "/geolocation", label: "Géolocalisation", icon: MapPin, permission: "stats.read" },
-  { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
-  { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },
-  { href: "/welcome", label: "Bienvenue", icon: HandHeart, permission: "welcome.read" },
-  // Catalogue officiel : lecture par tout administrateur (stickers.read) ;
-  // l'écriture, la publication et la modération gardent leurs permissions
-  // propres, vérifiées par chaque page et par le serveur.
-  { href: "/stickers", label: "Stickers", icon: Sticker, permission: "stickers.read" },
-  // Gardée sur une permission d'écriture, à dessein : la page était réservée au
-  // super-admin, et la lecture seule des purges ne suffisait pas à l'ouvrir.
-  { href: "/purges", label: "Purges", icon: Eraser, permission: "purges.settings" },
-  // Lisible par tout administrateur, délibérément : un journal que seul son
-  // lecteur le plus puissant peut consulter ne protège personne de lui.
-  { href: "/audit", label: "Activité admin", icon: ScrollText, permission: "audit.read" },
-  // Même permission que l'audit : c'est le même métier, celui de constater. Une
-  // page à part cependant — chaque inscrit demande sa clé à chaque sauvegarde,
-  // et ces milliers de lignes de routine noieraient le journal des gestes
-  // d'administrateur.
-  // Constat, pas action : le serveur ne détient aucune archive. D'où
-  // `stats.read` — c'est une vue d'ensemble du parc, pas un pouvoir de plus.
-  { href: "/backups", label: "Sauvegardes", icon: DatabaseBackup, permission: "stats.read" },
-  { href: "/backup-keys", label: "Clés de sauvegarde", icon: KeyRound, permission: "audit.read" },
-  // Sur `stats.read` plutôt qu'une permission dédiée : créer une permission
-  // aurait imposé une migration et une reconfiguration de tous les rôles pour
-  // une page en lecture seule, qui n'expose que des compteurs et des messages
-  // d'erreur techniques — rien qu'un lecteur de statistiques ne puisse voir.
-  { href: "/sante", label: "Santé du service", icon: HeartPulse, permission: "stats.read" },
-  { href: "/settings", label: "Paramètres", icon: Settings, permission: "settings.read" },
-  { href: "/profile", label: "Mon profil", icon: UserCircle, permission: "profile.read" },
-];
+function NavButton({
+  item,
+  active,
+  collapsed,
+  badge,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  collapsed: boolean;
+  badge?: number;
+  onNavigate: () => void;
+}) {
+  return (
+    <button
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+        active
+          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      )}
+    >
+      <item.icon className="h-5 w-5 shrink-0" />
+      {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
+      {!collapsed && badge ? (
+        <span
+          className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-100 px-1.5 text-[10px] font-bold text-red-700 dark:bg-red-950/70 dark:text-red-300"
+          aria-label={`${badge} signalement${badge > 1 ? "s" : ""} à traiter`}
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -97,6 +77,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
+  /**
+   * Sections ouvertes. La page courante force la sienne dès le premier rendu,
+   * pour éviter le clignotement « tout fermé puis ouverture ». Le reste vient
+   * du navigateur : un poste qui travaille toujours dans la même section la
+   * retrouve ouverte au rechargement.
+   */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const active = findActiveGroup(pathname);
+    return new Set(active ? [active] : []);
+  });
+  const [navRestored, setNavRestored] = useState(false);
+
+  const { data: openReports } = useOpenReports(4, can("reports.read"));
+
   useEffect(() => {
     const auth = isAuthenticated();
     setAuthenticated(auth);
@@ -105,6 +99,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace('/login');
     }
   }, [router]);
+
+  // Mémoire des sections ouvertes, relue après le montage : le rendu serveur
+  // ne connaît pas le localStorage.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(NAV_OPEN_STORAGE_KEY);
+      const ids = keepKnownGroupIds(stored ? JSON.parse(stored) : null);
+      if (ids.length > 0) setOpenGroups((prev) => new Set([...Array.from(prev), ...ids]));
+    } catch {
+      // Un stockage corrompu ou bloqué ne doit pas casser la navigation.
+    }
+    setNavRestored(true);
+  }, []);
+
+  // Changer de page ouvre la section qui la contient, même si elle avait été
+  // repliée à la main : la page courante reste un repère.
+  useEffect(() => {
+    const active = findActiveGroup(pathname);
+    if (!active) return;
+    setOpenGroups((prev) => (prev.has(active) ? prev : new Set(prev).add(active)));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navRestored) return;
+    try {
+      localStorage.setItem(NAV_OPEN_STORAGE_KEY, JSON.stringify(Array.from(openGroups)));
+    } catch {
+      // Idem : la préférence est un confort, pas une condition d'affichage.
+    }
+  }, [openGroups, navRestored]);
 
   if (!ready) return null;
 
@@ -116,7 +140,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Tant que le profil charge, `can` répond faux et la barre reste vide : une
   // entrée qui apparaît une seconde trop tard vaut mieux qu'une qui s'affiche
   // puis disparaît.
-  const navItems = navItemsAll.filter((item) => can(item.permission));
+  const groups = visibleGroups(NAV_GROUPS, can);
+  const activeGroup = findActiveGroup(pathname, groups);
+  const badgeFor = (item: NavItem) =>
+    item.href === "/reports" ? (openReports?.open ?? openReports?.total ?? 0) : 0;
+
+  const toggleGroup = (id: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
@@ -140,27 +175,115 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <button
+        <nav aria-label="Navigation principale" className="flex-1 px-2 py-4 overflow-y-auto">
+          <div className="space-y-1">
+            {PINNED_NAV.filter((item) => can(item.permission)).map((item) => (
+              <NavButton
                 key={item.href}
-                onClick={() => router.push(item.href)}
-                className={cn(
-                  "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  active
-                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                item={item}
+                active={isNavItemActive(pathname, item.href)}
+                collapsed={collapsed}
+                badge={badgeFor(item)}
+                onNavigate={() => router.push(item.href)}
+              />
+            ))}
+          </div>
+
+          <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
+
+          {collapsed ? (
+            // Replié, il n'y a plus de place pour un titre de section : les
+            // entrées restent atteignables, séparées par famille, et le
+            // libellé passe en infobulle.
+            groups.map((group, index) => (
+              <div key={group.id}>
+                {index > 0 && (
+                  <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
                 )}
-              >
-                <span className="relative shrink-0">
-                  <item.icon className="h-5 w-5" />
-                </span>
-                {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-              </button>
-            );
-          })}
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <NavButton
+                      key={item.href}
+                      item={item}
+                      active={isNavItemActive(pathname, item.href)}
+                      collapsed
+                      badge={badgeFor(item)}
+                      onNavigate={() => router.push(item.href)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="space-y-0.5">
+              {groups.map((group) => {
+                const open = openGroups.has(group.id);
+                const containsActive = activeGroup === group.id;
+                return (
+                  <div key={group.id}>
+                    <button
+                      onClick={() => toggleGroup(group.id)}
+                      aria-expanded={open}
+                      aria-controls={`nav-group-${group.id}`}
+                      className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                    >
+                      <span className="flex-1 truncate text-left">{group.label}</span>
+                      {/* Repliée, la section dit quand même qu'elle contient la
+                          page courante : sinon l'état actif disparaît. */}
+                      {!open && containsActive && (
+                        <>
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500"
+                            aria-hidden
+                          />
+                          <span className="sr-only">Contient la page courante</span>
+                        </>
+                      )}
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-transform",
+                          !open && "-rotate-90"
+                        )}
+                        aria-hidden
+                      />
+                    </button>
+
+                    <div
+                      id={`nav-group-${group.id}`}
+                      hidden={!open}
+                      className="ml-3 mt-1 space-y-1 border-l border-zinc-200 pl-2 dark:border-zinc-800"
+                    >
+                      {group.items.map((item) => (
+                        <NavButton
+                          key={item.href}
+                          item={item}
+                          active={isNavItemActive(pathname, item.href)}
+                          collapsed={false}
+                          badge={badgeFor(item)}
+                          onNavigate={() => router.push(item.href)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
+
+          <div className="space-y-1">
+            {SECONDARY_NAV.filter((item) => can(item.permission)).map((item) => (
+              <NavButton
+                key={item.href}
+                item={item}
+                active={isNavItemActive(pathname, item.href)}
+                collapsed={collapsed}
+                badge={badgeFor(item)}
+                onNavigate={() => router.push(item.href)}
+              />
+            ))}
+          </div>
         </nav>
 
         <div className="border-t dark:border-zinc-800 p-2 space-y-1">
@@ -194,11 +317,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <button
-              onClick={() => router.push("/profile")}
-              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              title="Mon profil"
-            >
+            {/* Identité seule : « Mon profil » n'a qu'une porte, en bas de la
+                barre latérale. Trois liens vers la même page encombraient le
+                menu sans rien ajouter. */}
+            <div className="flex items-center gap-2 p-1.5" title={user?.nom}>
               {user?.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -210,7 +332,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className={`h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0 ${user?.avatarUrl ? "hidden" : ""}`}>
                 {user?.nom ? user.nom.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) : "AD"}
               </div>
-            </button>
+            </div>
           </div>
         </header>
 
