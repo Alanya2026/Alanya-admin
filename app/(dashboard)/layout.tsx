@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, ChevronLeft, LogOut, Menu, UserCircle } from "lucide-react";
+import { ChevronDown, ChevronLeft, LogOut, Menu, Pin, UserCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
 import { cn } from "@/lib/utils";
@@ -9,14 +9,16 @@ import { isAuthenticated, adminLogout, getAdminUser } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useOpenReports } from "@/hooks/useReports";
 import {
-  NAV_GROUPS,
+  DEFAULT_PINNED_HREFS,
+  MAX_PINNED,
   NAV_OPEN_STORAGE_KEY,
-  PINNED_NAV,
-  SECONDARY_NAV,
+  PINNED_STORAGE_KEY,
+  buildSidebar,
   findActiveGroup,
   isNavItemActive,
   keepKnownGroupIds,
-  visibleGroups,
+  keepKnownNavHrefs,
+  togglePinnedHref,
   type NavItem,
 } from "@/lib/nav";
 import { useEffect, useState } from "react";
@@ -27,43 +29,87 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
  * Une entrée de navigation. `aria-current` porte l'état actif : la couleur
  * seule ne dit rien à un lecteur d'écran, et une section repliée doit tout de
  * même annoncer qu'elle contient la page courante.
+ *
+ * L'épingle est un bouton frère, pas un bouton imbriqué : deux actions dans le
+ * même contrôle seraient invalides et impossibles à viser au clavier.
  */
 function NavButton({
   item,
   active,
   collapsed,
   badge,
+  pinned,
+  pinLimitReached,
+  onTogglePin,
   onNavigate,
 }: {
   item: NavItem;
   active: boolean;
   collapsed: boolean;
   badge?: number;
+  pinned?: boolean;
+  pinLimitReached?: boolean;
+  onTogglePin?: () => void;
   onNavigate: () => void;
 }) {
+  const pinnable = !collapsed && Boolean(onTogglePin);
+  const pinTitle = pinned
+    ? `Désépingler ${item.label}`
+    : pinLimitReached
+      ? `Maximum ${MAX_PINNED} épingles`
+      : `Épingler ${item.label}`;
+
   return (
-    <button
-      onClick={onNavigate}
-      title={collapsed ? item.label : undefined}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-        active
-          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
-          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-      )}
-    >
-      <item.icon className="h-5 w-5 shrink-0" />
-      {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
-      {!collapsed && badge ? (
-        <span
-          className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-100 px-1.5 text-[10px] font-bold text-red-700 dark:bg-red-950/70 dark:text-red-300"
-          aria-label={`${badge} signalement${badge > 1 ? "s" : ""} à traiter`}
+    <div className="group relative">
+      <button
+        onClick={onNavigate}
+        title={collapsed ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+          pinnable && "pr-10",
+          active
+            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+        )}
+      >
+        <item.icon className="h-5 w-5 shrink-0" />
+        {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
+        {!collapsed && badge ? (
+          <span
+            className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-100 px-1.5 text-[10px] font-bold text-red-700 dark:bg-red-950/70 dark:text-red-300"
+            aria-label={`${badge} signalement${badge > 1 ? "s" : ""} à traiter`}
+          >
+            {badge > 99 ? "99+" : badge}
+          </span>
+        ) : null}
+      </button>
+
+      {pinnable && (
+        <button
+          type="button"
+          onClick={onTogglePin}
+          disabled={!pinned && pinLimitReached}
+          aria-pressed={Boolean(pinned)}
+          aria-label={pinTitle}
+          title={pinTitle}
+          className={cn(
+            "absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md transition",
+            "text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200",
+            "focus-visible:opacity-100",
+            // Visible sans survol sur un écran tactile : sans cela, épingler
+            // serait une fonction réservée à la souris.
+            "[@media(hover:none)]:opacity-100",
+            pinned
+              ? "opacity-70 group-hover:opacity-100"
+              : "opacity-0 group-hover:opacity-100",
+            !pinned && pinLimitReached && "cursor-not-allowed group-hover:opacity-30"
+          )}
         >
-          {badge > 99 ? "99+" : badge}
-        </span>
-      ) : null}
-    </button>
+          <Pin className={cn("h-3.5 w-3.5", pinned && "fill-current")} />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -89,7 +135,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   const [navRestored, setNavRestored] = useState(false);
 
+  /** Raccourcis épinglés : les trois par défaut tant que rien n'est mémorisé. */
+  const [pinnedHrefs, setPinnedHrefs] = useState<string[]>(DEFAULT_PINNED_HREFS);
+  const [pinsRestored, setPinsRestored] = useState(false);
+
   const { data: openReports } = useOpenReports(4, can("reports.read"));
+
+  // Tant que le profil charge, `can` répond faux et la barre reste vide : une
+  // entrée qui apparaît une seconde trop tard vaut mieux qu'une qui s'affiche
+  // puis disparaît.
+  const { pinned, groups, secondary } = buildSidebar({ pinnedHrefs, can });
+  const activeGroup = findActiveGroup(pathname, groups);
+  const pinsAtMax = pinnedHrefs.length >= MAX_PINNED;
+  const pinsAreDefault =
+    pinnedHrefs.length === DEFAULT_PINNED_HREFS.length &&
+    pinnedHrefs.every((href, index) => href === DEFAULT_PINNED_HREFS[index]);
 
   useEffect(() => {
     const auth = isAuthenticated();
@@ -113,13 +173,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setNavRestored(true);
   }, []);
 
-  // Changer de page ouvre la section qui la contient, même si elle avait été
-  // repliée à la main : la page courante reste un repère.
+  // Même principe pour les épingles. Une valeur illisible laisse les valeurs
+  // par défaut : mieux vaut trois raccourcis que zéro.
   useEffect(() => {
-    const active = findActiveGroup(pathname);
-    if (!active) return;
-    setOpenGroups((prev) => (prev.has(active) ? prev : new Set(prev).add(active)));
-  }, [pathname]);
+    try {
+      const stored = localStorage.getItem(PINNED_STORAGE_KEY);
+      const hrefs = stored ? keepKnownNavHrefs(JSON.parse(stored)) : null;
+      if (hrefs) setPinnedHrefs(hrefs);
+    } catch {
+      // Voir plus haut.
+    }
+    setPinsRestored(true);
+  }, []);
+
+  // Changer de page ouvre la section qui la contient, même si elle avait été
+  // repliée à la main : la page courante reste un repère. Une entrée épinglée
+  // n'appartient plus à sa section : elle ne doit pas l'ouvrir pour rien.
+  useEffect(() => {
+    if (!activeGroup) return;
+    setOpenGroups((prev) => (prev.has(activeGroup) ? prev : new Set(prev).add(activeGroup)));
+  }, [activeGroup]);
 
   useEffect(() => {
     if (!navRestored) return;
@@ -130,6 +203,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [openGroups, navRestored]);
 
+  useEffect(() => {
+    if (!pinsRestored) return;
+    try {
+      localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(pinnedHrefs));
+    } catch {
+      // Voir plus haut.
+    }
+  }, [pinnedHrefs, pinsRestored]);
+
   if (!ready) return null;
 
   if (!authenticated && !USE_MOCK) {
@@ -137,11 +219,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const user = getAdminUser();
-  // Tant que le profil charge, `can` répond faux et la barre reste vide : une
-  // entrée qui apparaît une seconde trop tard vaut mieux qu'une qui s'affiche
-  // puis disparaît.
-  const groups = visibleGroups(NAV_GROUPS, can);
-  const activeGroup = findActiveGroup(pathname, groups);
   const badgeFor = (item: NavItem) =>
     item.href === "/reports" ? (openReports?.open ?? openReports?.total ?? 0) : 0;
 
@@ -152,6 +229,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       else next.add(id);
       return next;
     });
+
+  const togglePin = (href: string) =>
+    setPinnedHrefs((prev) => togglePinnedHref(prev, href));
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
@@ -177,16 +257,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <nav aria-label="Navigation principale" className="flex-1 px-2 py-4 overflow-y-auto">
           <div className="space-y-1">
-            {PINNED_NAV.filter((item) => can(item.permission)).map((item) => (
+            {pinned.map((item) => (
               <NavButton
                 key={item.href}
                 item={item}
                 active={isNavItemActive(pathname, item.href)}
                 collapsed={collapsed}
                 badge={badgeFor(item)}
+                pinned
+                pinLimitReached={pinsAtMax}
+                onTogglePin={() => togglePin(item.href)}
                 onNavigate={() => router.push(item.href)}
               />
             ))}
+
+            {!pinsAreDefault && !collapsed && (
+              <button
+                onClick={() => setPinnedHrefs([...DEFAULT_PINNED_HREFS])}
+                className="w-full rounded-md px-3 py-1.5 text-left text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              >
+                Réinitialiser les épingles
+              </button>
+            )}
+
+            {!collapsed && pinsAtMax && (
+              <p className="px-3 py-1 text-[10px] text-zinc-400">
+                {MAX_PINNED} épingles au maximum
+              </p>
+            )}
           </div>
 
           <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
@@ -194,7 +292,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {collapsed ? (
             // Replié, il n'y a plus de place pour un titre de section : les
             // entrées restent atteignables, séparées par famille, et le
-            // libellé passe en infobulle.
+            // libellé passe en infobulle. L'épinglage, lui, attend le dépliage.
             groups.map((group, index) => (
               <div key={group.id}>
                 {index > 0 && (
@@ -260,6 +358,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           active={isNavItemActive(pathname, item.href)}
                           collapsed={false}
                           badge={badgeFor(item)}
+                          pinned={false}
+                          pinLimitReached={pinsAtMax}
+                          onTogglePin={() => togglePin(item.href)}
                           onNavigate={() => router.push(item.href)}
                         />
                       ))}
@@ -273,13 +374,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
 
           <div className="space-y-1">
-            {SECONDARY_NAV.filter((item) => can(item.permission)).map((item) => (
+            {secondary.map((item) => (
               <NavButton
                 key={item.href}
                 item={item}
                 active={isNavItemActive(pathname, item.href)}
                 collapsed={collapsed}
                 badge={badgeFor(item)}
+                pinned={pinnedHrefs.includes(item.href)}
+                pinLimitReached={pinsAtMax}
+                onTogglePin={() => togglePin(item.href)}
                 onNavigate={() => router.push(item.href)}
               />
             ))}
