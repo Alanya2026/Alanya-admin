@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { BillingFeature, BillingPlan, BillingPlanPayload } from "@/types";
 
 const CODE_RE = /^[a-z0-9_]{3,40}$/;
+const GIO = 1024 ** 3;
 
 interface Form {
   code: string;
@@ -37,6 +38,8 @@ interface Form {
   storeIos: string;
   storeAndroid: string;
   features: string[];
+  /** Espace du coffre-fort, en Go ; vide = l'espace gratuit. */
+  safeboxGo: string;
 }
 
 const fromPlan = (p: BillingPlan | null, features: BillingFeature[]): Form => ({
@@ -49,6 +52,7 @@ const fromPlan = (p: BillingPlan | null, features: BillingFeature[]): Form => ({
   isFeatured: p ? p.isFeatured === 1 : false,
   storeIos: p?.storeProductIos ?? "",
   storeAndroid: p?.storeProductAndroid ?? "",
+  safeboxGo: p?.safeboxBytes == null ? "" : String(Math.round((Number(p.safeboxBytes) / GIO) * 100) / 100),
   // Un nouveau plan inclut par défaut tout ce qui est payant.
   features: p?.features ?? features.filter((f) => f.isPaid === 1).map((f) => f.code),
 });
@@ -85,6 +89,7 @@ export function PlanEditor({ plan, plans, features, canEdit, onCreated }: PlanEd
     if (!/^\d+$/.test(form.duration) || duration < 1 || duration > 36) e.duration = "Entre 1 et 36 mois";
     if (!/^\d+$/.test(form.price)) e.price = "Montant entier, sans décimales";
     if (!/^\d+$/.test(form.reminder) || reminder >= duration * 28) e.reminder = "Plus court que la durée du plan";
+    if (form.safeboxGo && !/^\d+([.,]\d+)?$/.test(form.safeboxGo)) e.safeboxGo = "Nombre de Go, ou vide";
     return e;
   }, [form, isNew, duration, reminder]);
   const valid = Object.keys(errors).length === 0;
@@ -103,6 +108,11 @@ export function PlanEditor({ plan, plans, features, canEdit, onCreated }: PlanEd
     store_product_ios: form.storeIos.trim() || null,
     store_product_android: form.storeAndroid.trim() || null,
     features: form.features,
+    // Absent tant que le champ n'a jamais été renseigné : un serveur sans la
+    // migration 103 refuserait une colonne inconnue.
+    ...(form.safeboxGo || plan?.safeboxBytes != null
+      ? { safebox_bytes: form.safeboxGo ? Math.round(Number(form.safeboxGo.replace(",", ".")) * GIO) : null }
+      : {}),
   });
 
   const save = () => {
@@ -182,6 +192,15 @@ export function PlanEditor({ plan, plans, features, canEdit, onCreated }: PlanEd
             <Input inputMode="numeric" value={form.reminder} disabled={disabled} onChange={(e) => set("reminder", e.target.value.trim())} className="pr-16 tabular-nums" />
           </Field>
         </div>
+
+        <Field
+          label="Espace coffre-fort"
+          error={errors.safeboxGo}
+          suffix="Go"
+          help="Vide : l'espace gratuit. 30 jours après la fin de l'abonnement, ce qui dépasse l'espace gratuit est supprimé, les fichiers les plus récents d'abord."
+        >
+          <Input inputMode="decimal" value={form.safeboxGo} disabled={disabled} onChange={(e) => set("safeboxGo", e.target.value.trim())} placeholder="50" className="pr-12 tabular-nums sm:max-w-[12rem]" />
+        </Field>
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Fonctionnalités incluses</legend>

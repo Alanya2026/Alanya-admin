@@ -419,8 +419,8 @@ export default function NewBroadcastPage() {
                     </p>
                   ) : null}
                   <FileUpload
+                    endpoint="/upload/official"
                     accept={nature === 2 ? "video/*" : "image/*,video/*"}
-                    maxSize={50 * 1024 * 1024}
                     onUploadComplete={(url) => setMediaUrl(url)}
                   />
                 </div>

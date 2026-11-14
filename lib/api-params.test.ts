@@ -58,7 +58,17 @@ describe('buildUsersApiParams', () => {
     expect(out.to).toBe('2026-02-01');
   });
 
-  it('UPDATE_SENTINEL: la whitelist de tri couvre les trois colonnes autorisées', () => {
-    expect(USER_SORT_COLUMNS).toEqual(['created_at', 'nom', 'last_seen']);
+  // Miroir de SORT_COLUMNS dans usersQuery.js (backend) : `backup_last_at` y
+  // figure pour la page Sauvegardes.
+  it('UPDATE_SENTINEL: la whitelist de tri couvre les quatre colonnes autorisées', () => {
+    expect(USER_SORT_COLUMNS).toEqual(['created_at', 'nom', 'last_seen', 'backup_last_at']);
+  });
+
+  it('transmet le filtre de sauvegarde et le tri par dernière sauvegarde', () => {
+    const out = buildUsersApiParams({ backup: 'never', sort: 'backup_last_at', order: 'asc' });
+    expect(out.backup).toBe('never');
+    expect(out.sort).toBe('backup_last_at');
+    expect(out.order).toBe('asc');
+    expect(buildUsersApiParams({}).backup).toBeUndefined();
   });
 });

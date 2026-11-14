@@ -29,6 +29,7 @@ export function GiftDialog({
   userName,
   currentEnd,
   graceUntil,
+  trialEnd = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +37,8 @@ export function GiftDialog({
   userName: string;
   currentEnd: string | null;
   graceUntil: string | null;
+  /** Fin de l'essai du compte, tant qu'il court (régime essai) : la période offerte commence après. */
+  trialEnd?: string | null;
 }) {
   const { addToast } = useToast();
   const gift = useGiftSubscription();
@@ -44,7 +47,7 @@ export function GiftDialog({
   const [grantsBadge, setGrantsBadge] = useState(true);
   const [missingReason, setMissingReason] = useState(false);
 
-  const start = nextPeriodStart(new Date(), currentEnd, graceUntil);
+  const start = nextPeriodStart(new Date(), currentEnd, graceUntil, trialEnd);
   const end = addMonths(start, months);
 
   const close = (next: boolean) => {

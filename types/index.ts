@@ -44,12 +44,73 @@ export interface User {
   excludeReason: string | null;
   createdAt: string | null;
   paysLibelle: string | null;
+
+  /** Dernière sauvegarde déclarée par l'appareil. `null` = jamais sauvegardé. */
+  backupLastAt: string | null;
+  backupBytes: number | null;
+  backupMessageCount: number | null;
+}
+
+/** État des sauvegardes du parc. Lecture seule : le serveur ne détient aucune
+ *  archive — elles sont sur le Drive de l'inscrit ou dans son téléphone. */
+export interface BackupOverview {
+  /** Au-delà, une sauvegarde est dite périmée. Vient du serveur pour que la
+   *  règle ne puisse pas diverger entre les deux côtés. */
+  staleDays: number;
+  comptes: number;
+  avecSauvegarde: number;
+  recentes: number;
+  perimees: number;
+  jamais: number;
+  octetsTotal: number;
+  derniere: string | null;
+  /** Part du parc réellement protégée, en pourcentage. */
+  couverture: number;
+}
+
+/**
+ * Une version de clé de sauvegarde.
+ *
+ * Le secret n'y figure pas, et ne figurera jamais : il est engendré côté
+ * serveur et n'a aucune raison de voyager.
+ */
+export interface BackupKeyVersion {
+  kid: number;
+  createdAt: string;
+  /** Renseigné = sortie du service pour les NOUVELLES sauvegardes. Elle reste
+   *  lisible : les archives qui la portent se restaurent toujours. */
+  retiredAt: string | null;
+  active: boolean;
+  /** Le secret vaut encore son marqueur de déploiement : le serveur refuse de
+   *  servir la clé, donc aucune sauvegarde ne peut être écrite. */
+  placeholder: boolean;
+  comptes: number;
+}
+
+export interface BackupKeyState {
+  versions: BackupKeyVersion[];
+  /** Version qui chiffrera la prochaine sauvegarde. */
+  courante: number | null;
+  /** Faux = plus aucune sauvegarde n'est possible sur tout le parc. */
+  utilisable: boolean;
+}
+
+/** Combien de comptes portent chaque version de clé. Après une rotation, dit
+ *  combien de sauvegardes deviendraient illisibles si l'on retirait la version
+ *  précédente trop tôt. */
+export interface BackupKeyUsage {
+  kid: number;
+  comptes: number;
+  derniere: string | null;
 }
 
 export interface UserDetail extends User {
   fcmToken: string;
   deviceID: string;
   paysPrefix: string;
+  backupKid: number | null;
+  /** Adresse Google masquée du compte de dépôt, telle que le serveur la garde. */
+  backupAccountHint: string | null;
 }
 
 export interface UserActivity {
@@ -734,6 +795,40 @@ export interface AuditEntry {
   adminEmail: string | null;
 }
 
+/**
+ * Une délivrance de clé de sauvegarde, ou son refus.
+ *
+ * Journal séparé de `AuditEntry` parce que les deux n'ont pas la même nature :
+ * l'audit recense des gestes rares et délibérés d'administrateur, celui-ci une
+ * opération de routine que chaque inscrit déclenche à chaque sauvegarde. Les
+ * mêler noierait le premier sous le second.
+ */
+export interface BackupKeyAccess {
+  id: number;
+  alanyaId: number;
+  /** Version de clé demandée. `null` = version courante, donc une sauvegarde ;
+   *  renseignée = une restauration. */
+  kid: number | null;
+  outcome: 'servie' | 'refusee';
+  reason: string | null;
+  ip: string | null;
+  deviceId: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  compteNom: string | null;
+  comptePhone: string | null;
+}
+
+/** Vue d'ensemble sur une fenêtre : ce qui répond à « rien d'anormal ? ». */
+export interface BackupKeyAccessSummary {
+  days: number;
+  total: number;
+  refus: number;
+  comptes: number;
+  adresses: number;
+  derniere: string | null;
+}
+
 /** Vocabulaire réellement présent dans le journal, pour alimenter les filtres. */
 export interface AuditActionCount {
   action: string;
@@ -932,15 +1027,24 @@ export interface ServiceHealth {
 
 export type BillingPhase = 'free' | 'grace' | 'paid';
 
+/** Régime en vigueur : 1 = Alanya Plus, 2 = essai de 3 mois puis réception seule. */
+export type BillingModel = 1 | 2;
+
 export interface BillingSettingsRow {
   id: number;
   paidEnabled: 0 | 1;
+  /** Absent d'un serveur antérieur à la migration 090 : c'était alors Alanya Plus. */
+  model?: BillingModel;
   activatedAt: string | null;
   graceUntil: string | null;
   deactivatedAt: string | null;
   defaultGraceDays: number;
   trialDays: number;
   retentionDays: number;
+  /** Site de paiement (https). Nul : le bouton de l'application est grisé. */
+  payUrl?: string | null;
+  /** Codes d'activation remis pour un paiement (absent avant la migration 096 : 3). */
+  codesPerPayment?: number;
   updatedBy: number | null;
   updatedAt: string | null;
 }
@@ -948,9 +1052,14 @@ export interface BillingSettingsRow {
 export interface BillingSettingsResponse {
   settings: BillingSettingsRow;
   phase: BillingPhase;
+  /** Régime en vigueur (absent d'un serveur antérieur : Alanya Plus). */
+  model?: BillingModel;
   /** Fournisseur de paiement actif (variable PAYMENT_PROVIDER du serveur). */
   provider: string;
-  /** Code qui empêche l'activation (ex. BILLING_PROVIDER_SIMULATED), ou null. */
+  /**
+   * Code qui empêche l'activation, ou null : BILLING_PROVIDER_SIMULATED (régime 1)
+   * ou BILLING_CODE_SECRET_MISSING (régime 2).
+   */
   activationBlockedBy: string | null;
   /** Ce que l'activation déclencherait aujourd'hui. */
   preview: { accounts: number; verifiedBadges: number };
@@ -961,6 +1070,10 @@ export interface BillingSettingsPatch {
   default_grace_days?: number;
   trial_days?: number;
   retention_days?: number;
+  /** Adresse https du site de paiement ; null ou vide l'efface. */
+  pay_url?: string | null;
+  /** Codes remis pour un paiement, de 1 à 10. */
+  codes_per_payment?: number;
 }
 
 export interface BillingFeature {
@@ -994,6 +1107,11 @@ export interface BillingPlan {
   storeProductIos: string | null;
   storeProductAndroid: string | null;
   features: string[];
+  /**
+   * Espace du coffre-fort accordé par ce plan, en octets (migration 103).
+   * Null : l'espace gratuit. Absent d'un serveur antérieur au coffre.
+   */
+  safeboxBytes?: number | string | null;
   updatedAt?: string;
 }
 
@@ -1011,6 +1129,7 @@ export interface BillingPlanPayload {
   store_product_ios?: string | null;
   store_product_android?: string | null;
   features?: string[];
+  safebox_bytes?: number | null;
 }
 
 export type BillingPaymentStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'refunded';
@@ -1053,8 +1172,8 @@ export interface BillingSubscriberRow {
   purgeAfter: string | null;
 }
 
-/** 0 paiement, 1 essai, 2 offert, 3 compensation. */
-export type BillingPeriodSource = 0 | 1 | 2 | 3;
+/** 0 paiement, 1 essai, 2 offert, 3 compensation, 4 code d'activation. */
+export type BillingPeriodSource = 0 | 1 | 2 | 3 | 4;
 
 export interface BillingPeriodRow {
   id: number;
@@ -1083,6 +1202,10 @@ export interface BillingEntitlementPeriod {
  */
 export interface BillingEntitlements {
   phase: BillingPhase;
+  /** Absent d'un serveur antérieur à la migration 090 : Alanya Plus. */
+  model?: BillingModel;
+  /** Essai du compte (régime 2) : sa fin, et s'il court encore. Nul hors régime 2. */
+  trial?: { endsAt: string; active: boolean } | null;
   graceUntil: string | null;
   period: BillingEntitlementPeriod | null;
   upcoming: BillingEntitlementPeriod | null;
@@ -1092,6 +1215,59 @@ export interface BillingEntitlements {
   lapsedAt?: string | null;
   /** Compte de BILLING_TEST_USERS : voit la phase payante interrupteur éteint. */
   tester?: boolean;
+}
+
+// ── Codes d'activation (régime essai) ──
+
+export type BillingCodeStatus = 'available' | 'redeemed' | 'revoked' | 'expired';
+
+/** Le code en clair n'existe jamais ici : seulement ses quatre derniers symboles. */
+export interface BillingCodeRow {
+  id: number;
+  hint: string;
+  status: BillingCodeStatus;
+  label: string | null;
+  source: 'web' | 'admin';
+  planCode: string;
+  durationMonths: number;
+  amountPaid: number;
+  currency: string;
+  orderRef: string | null;
+  buyerContact: string | null;
+  createdAt: string;
+  expiresAt: string;
+  redeemedBy: number | null;
+  redeemedByName: string | null;
+  redeemedAt: string | null;
+  revokedAt: string | null;
+  revokeReason: string | null;
+}
+
+export interface BillingCodesResponse {
+  total: number;
+  rows: BillingCodeRow[];
+}
+
+export interface BillingCodeFilter {
+  status?: BillingCodeStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Corps de POST /admin/billing/codes — snake_case. */
+export interface BillingCodesPayload {
+  count: number;
+  label?: string;
+  validity_days?: number;
+  amount_paid?: number;
+}
+
+/** Réponse de la génération : les codes en clair, une seule fois. */
+export interface BillingCodesGenerated {
+  codes: { id: number; code: string; hint: string }[];
+  plan: { code: string; durationMonths: number; price: number; currency: string } | null;
+  expiresAt: string;
 }
 
 // ── Vérification d'identité ──
@@ -1207,4 +1383,303 @@ export interface UserBillingResponse {
   } | null;
   periods: BillingPeriodRow[];
   payments: BillingPaymentRow[];
+}
+
+// ── Stickers (type de message 10) ──
+//
+// Réponses de /admin/sticker-*, déjà converties en camelCase par lib/api.ts.
+// Les clés de langue (fr, en, zh) n'ont pas de `_` : elles traversent la
+// conversion intactes. Les corps envoyés partent en snake_case explicite, comme
+// le serveur les lit (cf. CONTRAT-STICKERS.md §7).
+
+/** `sticker_pack.status` : 0 brouillon, 1 publié, 2 archivé. */
+export type StickerPackStatus = 0 | 1 | 2;
+
+/** `sticker_pack.visibility` : 0 officiel, 1 privé, 2 lien. */
+export type StickerPackVisibility = 0 | 1 | 2;
+
+/** `sticker_asset.status` : 0 actif, 1 retiré. */
+export type StickerAssetStatus = 0 | 1;
+
+export interface StickerPackRow {
+  id: number;
+  code: string;
+  nameI18n: Translations;
+  descriptionI18n: Translations | null;
+  author: string | null;
+  /** Sticker choisi comme vignette ; null tant qu'aucun n'est désigné. */
+  coverStickerId: number | null;
+  /** Vignette déjà résolue par le serveur, ou null. */
+  coverUrl: string | null;
+  isPremium: 0 | 1;
+  visibility: StickerPackVisibility;
+  status: StickerPackStatus;
+  shareToken: string | null;
+  sortOrder: number;
+  version: number;
+  publishedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  stickerCount: number;
+  /** Poids cumulé des fichiers actifs, en octets. */
+  totalBytes?: number;
+  /** Nombre de stickers animés du pack ; optionnel (ignoré s'il est absent). */
+  animatedCount?: number;
+}
+
+export interface StickerPackSticker {
+  id: number;
+  position: number;
+  emoji: string;
+  nameI18n: Translations;
+  assetId: number;
+  assetStatus: StickerAssetStatus;
+  url: string;
+  thumbUrl: string | null;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  /** 1 = WebP animé (`sticker_asset.animated`). Absent chez un ancien serveur : statique. */
+  animated?: 0 | 1 | boolean;
+  /** Nombre d'images ; optionnel, fourni seulement si le serveur le connaît. */
+  frames?: number | null;
+  /** Durée d'un tour, en millisecondes ; optionnelle, comme `frames`. */
+  durationMs?: number | null;
+}
+
+export interface StickerPackDetail {
+  pack: StickerPackRow;
+  stickers: StickerPackSticker[];
+}
+
+/** Corps de POST /admin/sticker-packs — snake_case, comme le lit le serveur. */
+export interface StickerPackCreatePayload {
+  /** Laisser vide : le serveur en dérive un depuis le nom. */
+  code?: string;
+  name_i18n: Translations;
+  description_i18n?: Translations | null;
+  author?: string | null;
+  is_premium?: boolean;
+  sort_order?: number;
+}
+
+/** Corps de PATCH /admin/sticker-packs/:id. */
+export interface StickerPackPatchPayload {
+  name_i18n?: Translations;
+  description_i18n?: Translations | null;
+  author?: string | null;
+  is_premium?: boolean;
+  sort_order?: number;
+  cover_sticker_id?: number | null;
+}
+
+/** Corps de PATCH /admin/stickers/:id. */
+export interface StickerPatchPayload {
+  emoji?: string;
+  position?: number;
+  name_i18n?: Translations;
+}
+
+/** Un sticker créé par un envoi multiple — POST /admin/sticker-packs/:id/stickers. */
+export interface StickerUploaded {
+  id: number;
+  position: number;
+  bytes: number;
+  /** true si le fichier existait déjà (déduplication par propriétaire). */
+  reutilise: boolean;
+  /** Le fichier déposé est un WebP animé ; optionnel. */
+  animated?: 0 | 1 | boolean;
+  frames?: number | null;
+  durationMs?: number | null;
+}
+
+/** Réglages de lancement — GET /admin/sticker-settings. */
+export interface StickerSettings {
+  id: number;
+  enabled: 0 | 1;
+  creationEnabled: 0 | 1;
+  animatedEnabled: 0 | 1;
+  minAppVersion: string | null;
+  updatedBy: number | null;
+  updatedAt: string | null;
+}
+
+/** Corps de PUT /admin/sticker-settings — sous-ensemble, en snake_case. */
+export interface StickerSettingsPatch {
+  enabled?: boolean;
+  creation_enabled?: boolean;
+  animated_enabled?: boolean;
+  min_app_version?: string | null;
+}
+
+/** Un signalement de sticker perso — GET /admin/sticker-reports. */
+export interface StickerReportRow {
+  id: number;
+  assetId: number;
+  reporterId: number;
+  /** Motif TINYINT côté base ; à défaut une chaîne, affichée telle quelle. */
+  reason: number | string;
+  status: number;
+  createdAt: string | null;
+  assetStatus: StickerAssetStatus;
+  url: string;
+  thumbUrl: string | null;
+  reporterNom: string | null;
+  reporterPseudo: string | null;
+}
+
+/** Corps d'un 422 STICKER_PACK_INCOMPLETE à la publication. */
+export interface StickerPackIncomplete {
+  error: string;
+  code: "STICKER_PACK_INCOMPLETE";
+  missing: string[];
+}
+
+// ── Documents sensibles : enquête par empreinte (super-admin) ─────────────
+
+export type GesteSensible = "CONSULTATION" | "TELECHARGEMENT" | "PARTAGE" | "TRANSFERT";
+export type CompteStatut = "actif" | "banni" | "suppression_programmee" | "supprime";
+
+export interface EmpreintePersonne {
+  id: number;
+  nom: string | null;
+  pseudo: string | null;
+  numero: string | null;
+  avatarUrl: string | null;
+  typeCompte: number | null;
+  statut: CompteStatut;
+  suppressionPrevueLe: string | null;
+}
+
+export interface EmpreinteSession {
+  appareilId: string;
+  /** false : session d'avant la migration 026, ou effacée avec le compte. */
+  connue: boolean;
+  nom?: string | null;
+  plateforme?: string | null;
+  ip?: string | null;
+  connexion?: "password" | "register" | "qr" | null;
+  ouverteLe?: string | null;
+  derniereActivite?: string | null;
+  revoqueeLe?: string | null;
+  autresComptes?: { id: number; nom: string | null; numero: string | null }[];
+}
+
+export interface EmpreinteEvenement {
+  id: number;
+  geste: GesteSensible;
+  date: string;
+  empreinte: string | null;
+  appareil: string | null;
+  cetteCopie: boolean;
+  personne: { id: number; nom: string | null; numero: string | null; supprime: boolean };
+}
+
+export interface EmpreinteFiche {
+  empreinte: string;
+  geste: GesteSensible;
+  date: string;
+  appareil: string | null;
+  auteur: EmpreintePersonne;
+  expediteur: EmpreintePersonne;
+  session: EmpreinteSession | null;
+  document: {
+    msgID: number;
+    nom: string | null;
+    type: number | null;
+    taille: number | null;
+    envoyeLe: string | null;
+    etat: "present" | "supprime" | "purge";
+  };
+  conversation: { id: number; existe: boolean; groupe: boolean | null; nom: string | null; membres: number };
+  historique: { tronque: boolean; evenements: EmpreinteEvenement[] };
+  sortiesAuteur: {
+    total: number;
+    dernieres: { empreinte: string; geste: GesteSensible; date: string; document: { msgID: number; nom: string | null } }[];
+  };
+  verifications: { date: string; motif: string | null; trouvee: boolean; admin: { id: number; nom: string | null } | null }[];
+}
+
+export interface DocumentsSensiblesResume {
+  consultations: number;
+  copies: number;
+  derniereCopie: string | null;
+  copiesDeSesEnvois: number;
+}
+
+// ── Coffre-fort (GET /admin/safebox) ────────────────────────────────────────
+
+export type SafeboxFamily = 'photos' | 'videos' | 'audios' | 'documents';
+
+export interface SafeboxAdminSettings {
+  baseQuotaBytes: number;
+  maxFileBytes: number;
+  maxFileBytesPlus: number;
+  maxDepth: number;
+  maxFolders: number;
+  shareDownloadsPerDay: number;
+  extensions: Record<SafeboxFamily, string[]>;
+  lastReconcileAt: string | null;
+}
+
+export interface SafeboxAdmin {
+  totals: {
+    vaults: number;
+    files: number;
+    /** Ce qui compte dans les espaces des inscrits (corbeille comprise). */
+    countedBytes: number;
+    trashBytes: number;
+    /** Ce que MEGA stocke réellement, chaque fichier une fois : ce qui est facturé. */
+    megaBytes: number;
+    pendingUploads: number;
+    shares30d: number;
+    shareDownloads30d: number;
+    /** Fichiers dont le contenu manquait chez MEGA au dernier rapprochement ; null sans la migration 106. */
+    lostFiles: number | null;
+  };
+  /** Les 50 plus récents de ces fichiers, pour prévenir leurs propriétaires. */
+  lost: Array<{
+    fileId: number; name: string; family: SafeboxFamily; alanyaID: number;
+    ownerName: string | null; plainBytes: number; lostAt: string;
+  }> | null;
+  byFamily: Record<SafeboxFamily, { files: number; bytes: number }>;
+  topUsers: Array<{ alanyaID: number; name: string | null; phone: string | null; files: number; bytes: number }>;
+  settings: SafeboxAdminSettings;
+}
+
+/** Corps de PUT /admin/safebox/settings — snake_case, champs facultatifs. */
+export interface SafeboxSettingsPayload {
+  base_quota_bytes?: number;
+  max_file_bytes?: number;
+  max_file_bytes_plus?: number;
+  max_depth?: number;
+  max_folders?: number;
+  share_downloads_per_day?: number;
+  extensions?: Record<SafeboxFamily, string[]> | null;
+}
+
+/** GET /admin/reports/:id/safebox — le fichier du coffre d'un signalement. */
+export interface ReportSafebox {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  name: string;
+  mime: string | null;
+  family: SafeboxFamily;
+  plainBytes: number;
+  createdAt: string;
+  /** Partage retiré par la modération. */
+  revokedAt: string | null;
+  /** Plus aucun fichier en base (supprimé par l'expéditeur, ou partout par la modération). */
+  fileDeleted: boolean;
+  trashed: boolean;
+  /** Coffres qui le contiennent (expéditeur et copies enregistrées). */
+  vaults: number;
+  /** Partages encore actifs de ce contenu, tous expéditeurs confondus. */
+  activeShares: number;
+  /** Destinataires qui l'ont reçu ; null sans la migration 104. */
+  recipients: number | null;
+  /** Aperçu déchiffré par le serveur (data:image/…), ou null. */
+  preview: string | null;
+  previewError: boolean;
 }

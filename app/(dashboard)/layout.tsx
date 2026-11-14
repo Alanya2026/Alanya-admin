@@ -20,8 +20,13 @@ import {
   Eraser,
   HeartPulse,
   ScrollText,
+  KeyRound,
+  DatabaseBackup,
   Flag,
   CreditCard,
+  Sticker,
+  Fingerprint,
+  Vault,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminAlerts } from "@/components/layout/AdminAlerts";
@@ -49,16 +54,30 @@ const navItemsAll = [
   { href: "/groups", label: "Groupes", icon: UsersRound, permission: "groups.read" },
   { href: "/meetings", label: "Réunions", icon: Video, permission: "meetings.read" },
   { href: "/medias", label: "Médias", icon: ImageIcon, permission: "media.read" },
+  { href: "/documents-sensibles", label: "Documents sensibles", icon: Fingerprint, permission: "documents.trace" },
+  { href: "/safebox", label: "Coffre-fort", icon: Vault, permission: "safebox.read" },
   { href: "/geolocation", label: "Géolocalisation", icon: MapPin, permission: "stats.read" },
   { href: "/broadcasts", label: "Diffusions", icon: Megaphone, permission: "broadcasts.read" },
   { href: "/reports", label: "Signalements", icon: Flag, permission: "reports.read" },
   { href: "/welcome", label: "Bienvenue", icon: HandHeart, permission: "welcome.read" },
+  // Catalogue officiel : lecture par tout administrateur (stickers.read) ;
+  // l'écriture, la publication et la modération gardent leurs permissions
+  // propres, vérifiées par chaque page et par le serveur.
+  { href: "/stickers", label: "Stickers", icon: Sticker, permission: "stickers.read" },
   // Gardée sur une permission d'écriture, à dessein : la page était réservée au
   // super-admin, et la lecture seule des purges ne suffisait pas à l'ouvrir.
   { href: "/purges", label: "Purges", icon: Eraser, permission: "purges.settings" },
   // Lisible par tout administrateur, délibérément : un journal que seul son
   // lecteur le plus puissant peut consulter ne protège personne de lui.
   { href: "/audit", label: "Activité admin", icon: ScrollText, permission: "audit.read" },
+  // Même permission que l'audit : c'est le même métier, celui de constater. Une
+  // page à part cependant — chaque inscrit demande sa clé à chaque sauvegarde,
+  // et ces milliers de lignes de routine noieraient le journal des gestes
+  // d'administrateur.
+  // Constat, pas action : le serveur ne détient aucune archive. D'où
+  // `stats.read` — c'est une vue d'ensemble du parc, pas un pouvoir de plus.
+  { href: "/backups", label: "Sauvegardes", icon: DatabaseBackup, permission: "stats.read" },
+  { href: "/backup-keys", label: "Clés de sauvegarde", icon: KeyRound, permission: "audit.read" },
   // Sur `stats.read` plutôt qu'une permission dédiée : créer une permission
   // aurait imposé une migration et une reconfiguration de tous les rôles pour
   // une page en lecture seule, qui n'expose que des compteurs et des messages

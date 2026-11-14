@@ -3,8 +3,20 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, FileImage, Film, Loader2, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import { MEDIA_MAX_BYTES, createStallGuard } from "@/lib/upload-limits";
+
+/**
+ * Route d'envoi, selon ce que devient le fichier (backend : routes/upload.js).
+ *  - `/upload/official` : média d'une diffusion ou de l'accueil. Rangé sous
+ *    `official/`, dans le bucket public `profilemedia` : il n'expire jamais.
+ *  - `/upload/avatar`   : photo de profil. Bucket public `alanyaprofile`.
+ * `/upload/media` n'est pas proposé : c'est la route des médias de
+ * discussion, qui expirent au bout de 30 jours.
+ */
+export type UploadEndpoint = "/upload/official" | "/upload/avatar";
 
 interface FileUploadProps {
+  endpoint: UploadEndpoint;
   accept?: string;
   maxSize?: number;
   onUploadComplete: (url: string, filename: string) => void;
@@ -23,8 +35,9 @@ interface UploadState {
 }
 
 export function FileUpload({
+  endpoint,
   accept = "image/*,video/*",
-  maxSize = 50 * 1024 * 1024,
+  maxSize = MEDIA_MAX_BYTES,
   onUploadComplete,
   onUploadError,
   disabled = false,
@@ -79,11 +92,16 @@ export function FileUpload({
       const formData = new FormData();
       formData.append("file", file);
 
+      // Aucune durée totale : un gros fichier sur une connexion lente prend
+      // plusieurs minutes. L'envoi n'est abandonné que s'il cesse d'avancer.
+      const guard = createStallGuard();
       try {
-        const res = await api.post("/upload/media", formData, {
+        const res = await api.post(endpoint, formData, {
           headers: { "Content-Type": "multipart/form-data" },
-          timeout: 120_000,
+          timeout: 0,
+          signal: guard.signal,
           onUploadProgress: (e) => {
+            guard.tick();
             if (e.total && e.loaded) {
               setState((s) => ({ ...s, progress: Math.round((e.loaded! * 100) / e.total!) }));
             }
@@ -94,14 +112,18 @@ export function FileUpload({
         setState((s) => ({ ...s, status: "done", progress: 100, uploadedUrl: url }));
         onUploadComplete(url, filename || file.name);
       } catch (err: unknown) {
-        const msg = err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error || "Échec de l'upload"
-          : "Échec de l'upload";
+        const msg = guard.stalled
+          ? "Envoi interrompu : la connexion ne répond plus."
+          : err && typeof err === "object" && "response" in err
+            ? (err as { response?: { data?: { error?: string } } }).response?.data?.error || "Échec de l'upload"
+            : "Échec de l'upload";
         setState((s) => ({ ...s, status: "error", error: msg }));
         onUploadError?.(msg);
+      } finally {
+        guard.stop();
       }
     },
-    [maxSize, onUploadComplete, onUploadError]
+    [endpoint, maxSize, onUploadComplete, onUploadError]
   );
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {

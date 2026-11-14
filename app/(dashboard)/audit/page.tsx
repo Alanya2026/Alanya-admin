@@ -27,6 +27,9 @@ function targetHref(type: string | null, id: string | null): string | null {
   if (!id) return null;
   if (type === "user") return `/users/${id}`;
   if (type === "group") return `/groups/${id}`;
+  // Une recherche d'empreinte : la page s'ouvre préremplie, le motif reste à
+  // saisir — rien n'est relancé sans geste de l'administrateur.
+  if (type === "empreinte") return `/documents-sensibles?empreinte=${encodeURIComponent(id)}`;
   return null;
 }
 

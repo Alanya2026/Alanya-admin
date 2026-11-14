@@ -8,11 +8,16 @@
 
 import { api } from '@/lib/api';
 import type {
+  BillingCodeFilter,
+  BillingCodesGenerated,
+  BillingCodesPayload,
+  BillingCodesResponse,
   BillingFeature,
   BillingFeaturePatch,
   BillingPaymentRow,
   BillingPaymentStatus,
   BillingPlan,
+  BillingModel,
   BillingPlanPayload,
   BillingSettingsPatch,
   BillingSettingsResponse,
@@ -118,4 +123,29 @@ export async function fetchBillingFeatures(): Promise<BillingFeature[]> {
 export async function updateBillingFeature(code: string, payload: BillingFeaturePatch): Promise<BillingFeature[]> {
   const res = await api.put(`/admin/billing/features/${code}`, payload);
   return (res.data?.features ?? []) as BillingFeature[];
+}
+
+/**
+ * Choisit le régime (1 Alanya Plus, 2 essai). Refusé payant allumé : on passe par
+ * l'activation. Le motif est journalisé.
+ */
+export async function setBillingModel(payload: { model: BillingModel; reason: string }): Promise<BillingSettingsResponse> {
+  const res = await api.post('/admin/billing/model', payload);
+  return res.data as BillingSettingsResponse;
+}
+
+export async function fetchBillingCodes(filter: BillingCodeFilter = {}): Promise<BillingCodesResponse> {
+  const res = await api.get('/admin/billing/codes', { params: filter });
+  return res.data as BillingCodesResponse;
+}
+
+/** Les codes en clair ne sont dans cette réponse que cette fois : le serveur n'en garde que l'empreinte. */
+export async function generateBillingCodes(payload: BillingCodesPayload): Promise<BillingCodesGenerated> {
+  const res = await api.post('/admin/billing/codes', payload);
+  return res.data as BillingCodesGenerated;
+}
+
+/** Annule un code encore disponible. Motif obligatoire, journalisé. */
+export async function revokeBillingCode(id: number, reason: string): Promise<void> {
+  await api.post(`/admin/billing/codes/${id}/revoke`, { reason });
 }

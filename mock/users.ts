@@ -7,22 +7,47 @@ const baseUserFields = {
   verifiedUntil: null,
 };
 
+/** Un jour donné, en ISO. Repère relatif : les fixtures ne vieillissent pas. */
+const ilYa = (jours: number) =>
+  new Date(Date.now() - jours * 86_400_000).toISOString();
+
+/**
+ * État de sauvegarde des fixtures.
+ *
+ * Volontairement contrasté : l'écran « Sauvegardes » classe les comptes en
+ * « à jour », « périmée » et « jamais ». Avec des valeurs uniformes, deux de
+ * ces trois catégories resteraient vides et l'écran ne se vérifierait pas.
+ */
+const sauvegarde = (jours: number | null, mo = 4.2, messages = 1200) =>
+  jours == null
+    ? { backupLastAt: null, backupBytes: null, backupMessageCount: null }
+    : {
+        backupLastAt: ilYa(jours),
+        backupBytes: Math.round(mo * 1024 * 1024),
+        backupMessageCount: messages,
+      };
+
 export const mockUsers: User[] = [
-  { alanyaID: 1, nom: 'Jean Dupont', pseudo: 'jeand', alanyaPhone: '00482917', email: 'jean@example.com', idPays: 1, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-01-15T08:30:00Z', paysLibelle: 'France' },
-  { alanyaID: 2, nom: 'Marie K.', pseudo: 'mariek', alanyaPhone: '00593428', email: 'marie@example.com', idPays: 1, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-02-20T14:00:00Z', paysLibelle: 'France' },
-  { alanyaID: 3, nom: 'Paul B.', pseudo: 'paulb', alanyaPhone: '00604539', email: 'paul@example.com', idPays: 2, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-25T10:30:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-03-10T09:15:00Z', paysLibelle: "Côte d'Ivoire" },
-  { alanyaID: 4, nom: 'Sophie L.', pseudo: 'sophiel', alanyaPhone: '1234', email: 'sophie@example.com', idPays: 1, avatarUrl: '', typeCompte: 1, accountType: 1, verificationStatus: 2, verifiedUntil: '2027-01-01T00:00:00Z', isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-01-05T11:00:00Z', paysLibelle: 'France' },
-  { alanyaID: 5, nom: 'Lucas M.', pseudo: 'lucasm', alanyaPhone: '00715640', email: 'lucas@example.com', idPays: 3, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-24T18:45:00Z', exclus: true, excludeAt: '2026-05-20T08:00:00Z', excludeReason: 'Spam', createdAt: '2025-04-01T16:30:00Z', paysLibelle: 'Cameroun' },
-  { alanyaID: 6, nom: 'Emma R.', pseudo: 'emmar', alanyaPhone: '00826751', email: 'emma@example.com', idPays: 4, avatarUrl: '', typeCompte: 2, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2024-12-01T07:00:00Z', paysLibelle: 'Sénégal' },
-  { alanyaID: 7, nom: 'Thomas W.', pseudo: 'thomasw', alanyaPhone: '00937862', email: 'thomas@example.com', idPays: 5, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-23T22:10:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-06-15T13:45:00Z', paysLibelle: 'Maroc' },
-  { alanyaID: 8, nom: 'Camille N.', pseudo: 'camillen', alanyaPhone: '00148973', email: 'camille@example.com', idPays: 6, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: true, excludeAt: '2026-05-22T09:00:00Z', excludeReason: 'Comportement inapproprié', createdAt: '2025-05-10T12:00:00Z', paysLibelle: 'Algérie' },
-  { alanyaID: 9, nom: 'Hugo P.', pseudo: 'hugop', alanyaPhone: '00259084', email: 'hugo@example.com', idPays: 7, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-22T15:20:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-07-20T10:30:00Z', paysLibelle: 'Tunisie' },
-  { alanyaID: 10, nom: 'Léa D.', pseudo: 'lead', alanyaPhone: '00360195', email: 'lea@example.com', idPays: 8, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-08-05T17:00:00Z', paysLibelle: 'Belgique' },
-  { alanyaID: 11, nom: 'Nicolas R.', pseudo: 'nicolasr', alanyaPhone: '00471206', email: 'nicolas@example.com', idPays: 9, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-21T11:00:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-09-12T08:45:00Z', paysLibelle: 'Canada' },
-  { alanyaID: 12, nom: 'Julie M.', pseudo: 'juliem', alanyaPhone: '5678', email: 'julie@example.com', idPays: 10, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-10-01T19:30:00Z', paysLibelle: 'Suisse' },
+  { alanyaID: 1, nom: 'Jean Dupont', pseudo: 'jeand', alanyaPhone: '00482917', email: 'jean@example.com', idPays: 1, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-01-15T08:30:00Z', paysLibelle: 'France', ...sauvegarde(2, 8.1, 3400) },
+  { alanyaID: 2, nom: 'Marie K.', pseudo: 'mariek', alanyaPhone: '00593428', email: 'marie@example.com', idPays: 1, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-02-20T14:00:00Z', paysLibelle: 'France', ...sauvegarde(11, 2.6, 780) },
+  { alanyaID: 3, nom: 'Paul B.', pseudo: 'paulb', alanyaPhone: '00604539', email: 'paul@example.com', idPays: 2, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-25T10:30:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-03-10T09:15:00Z', paysLibelle: "Côte d'Ivoire", ...sauvegarde(64, 5.4, 2100) },
+  { alanyaID: 4, nom: 'Sophie L.', pseudo: 'sophiel', alanyaPhone: '1234', email: 'sophie@example.com', idPays: 1, avatarUrl: '', typeCompte: 1, accountType: 1, verificationStatus: 2, verifiedUntil: '2027-01-01T00:00:00Z', isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-01-05T11:00:00Z', paysLibelle: 'France', ...sauvegarde(1, 12.9, 5600) },
+  { alanyaID: 5, nom: 'Lucas M.', pseudo: 'lucasm', alanyaPhone: '00715640', email: 'lucas@example.com', idPays: 3, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-24T18:45:00Z', exclus: true, excludeAt: '2026-05-20T08:00:00Z', excludeReason: 'Spam', createdAt: '2025-04-01T16:30:00Z', paysLibelle: 'Cameroun', ...sauvegarde(null) },
+  { alanyaID: 6, nom: 'Emma R.', pseudo: 'emmar', alanyaPhone: '00826751', email: 'emma@example.com', idPays: 4, avatarUrl: '', typeCompte: 2, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2024-12-01T07:00:00Z', paysLibelle: 'Sénégal', ...sauvegarde(null) },
+  { alanyaID: 7, nom: 'Thomas W.', pseudo: 'thomasw', alanyaPhone: '00937862', email: 'thomas@example.com', idPays: 5, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-23T22:10:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-06-15T13:45:00Z', paysLibelle: 'Maroc', ...sauvegarde(45) },
+  { alanyaID: 8, nom: 'Camille N.', pseudo: 'camillen', alanyaPhone: '00148973', email: 'camille@example.com', idPays: 6, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: true, excludeAt: '2026-05-22T09:00:00Z', excludeReason: 'Comportement inapproprié', createdAt: '2025-05-10T12:00:00Z', paysLibelle: 'Algérie', ...sauvegarde(52) },
+  { alanyaID: 9, nom: 'Hugo P.', pseudo: 'hugop', alanyaPhone: '00259084', email: 'hugo@example.com', idPays: 7, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-22T15:20:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-07-20T10:30:00Z', paysLibelle: 'Tunisie', ...sauvegarde(null) },
+  { alanyaID: 10, nom: 'Léa D.', pseudo: 'lead', alanyaPhone: '00360195', email: 'lea@example.com', idPays: 8, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-08-05T17:00:00Z', paysLibelle: 'Belgique', ...sauvegarde(66) },
+  { alanyaID: 11, nom: 'Nicolas R.', pseudo: 'nicolasr', alanyaPhone: '00471206', email: 'nicolas@example.com', idPays: 9, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: false, lastSeen: '2026-05-21T11:00:00Z', exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-09-12T08:45:00Z', paysLibelle: 'Canada', ...sauvegarde(73) },
+  { alanyaID: 12, nom: 'Julie M.', pseudo: 'juliem', alanyaPhone: '5678', email: 'julie@example.com', idPays: 10, avatarUrl: '', typeCompte: 0, ...baseUserFields, isOnline: true, lastSeen: new Date().toISOString(), exclus: false, excludeAt: null, excludeReason: null, createdAt: '2025-10-01T19:30:00Z', paysLibelle: 'Suisse', ...sauvegarde(null) },
 ];
 
 export const mockUserDetail: UserDetail = {
+  // Sauvegarde à jour, avec une clé v1 et un compte Google masqué : c'est
+  // l'état nominal, celui que la fiche doit savoir rendre.
+  ...sauvegarde(2, 8.1, 3400),
+  backupKid: 1,
+  backupAccountHint: 'j•••@gmail.com',
   alanyaID: 1,
   nom: 'Jean Dupont',
   pseudo: 'jeand',

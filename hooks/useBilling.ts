@@ -4,21 +4,28 @@ import {
   createBillingPlan,
   deactivateBilling,
   extendBillingGrace,
+  fetchBillingCodes,
   fetchBillingFeatures,
   fetchBillingPayments,
   fetchBillingPlans,
   fetchBillingSettings,
   fetchBillingSubscribers,
   fetchUserBilling,
+  generateBillingCodes,
   giftSubscription,
   restoreBadge,
   revokeBadge,
+  revokeBillingCode,
+  setBillingModel,
   updateBillingFeature,
   updateBillingPlan,
   updateBillingSettings,
 } from "@/lib/api/billing";
 import type {
+  BillingCodeFilter,
+  BillingCodesPayload,
   BillingFeaturePatch,
+  BillingModel,
   BillingPaymentStatus,
   BillingPlanPayload,
   BillingSettingsPatch,
@@ -30,6 +37,7 @@ const PLANS = ["admin-billing-plans"];
 const FEATURES = ["admin-billing-features"];
 const PAYMENTS = ["admin-billing-payments"];
 const SUBSCRIBERS = ["admin-billing-subscribers"];
+const CODES = ["admin-billing-codes"];
 const userBillingKey = (id: number) => ["admin-user-billing", id];
 
 export function useBillingPayments(status?: BillingPaymentStatus) {
@@ -115,6 +123,37 @@ export const useDeactivateBilling = () =>
   useSettingsMutation((reason: string) => deactivateBilling(reason));
 export const useExtendBillingGrace = () =>
   useSettingsMutation((p: { graceUntil: string; reason: string }) => extendBillingGrace(p));
+export const useSetBillingModel = () =>
+  useSettingsMutation((p: { model: BillingModel; reason: string }) => setBillingModel(p));
+
+export function useBillingCodes(filter: BillingCodeFilter) {
+  return useQuery({
+    queryKey: [...CODES, filter],
+    queryFn: () => fetchBillingCodes(filter),
+  });
+}
+
+export function useGenerateBillingCodes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: BillingCodesPayload) => generateBillingCodes(p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CODES });
+      qc.invalidateQueries({ queryKey: ["admin-audit"] });
+    },
+  });
+}
+
+export function useRevokeBillingCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => revokeBillingCode(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CODES });
+      qc.invalidateQueries({ queryKey: ["admin-audit"] });
+    },
+  });
+}
 
 export function useBillingPlans() {
   return useQuery({ queryKey: PLANS, queryFn: fetchBillingPlans });

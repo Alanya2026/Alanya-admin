@@ -62,11 +62,26 @@ function describe(b: UserBillingResponse, plans?: BillingPlan[]) {
     return {
       label: "À venir",
       tone: TONE.upcoming,
-      detail: `${planLabel(e.upcoming.plan, plans)} à partir du ${fmtDay(e.upcoming.startsAt)}`,
+      detail: `${planLabel(e.upcoming.plan, plans)} à partir du ${fmtDay(e.upcoming.startsAt)}`
+        + (e.model === 2 && e.trial?.active ? " · l'essai court jusque-là" : ""),
     };
   }
   if (e.lapsedAt) {
     return { label: "Terminé", tone: TONE.ended, detail: `Depuis le ${fmtDay(e.lapsedAt)}.` };
+  }
+  // Régime essai : le compte est en essai, ou ne fait plus que recevoir.
+  if (e.model === 2 && e.trial) {
+    return e.trial.active
+      ? {
+        label: "Essai gratuit",
+        tone: TONE.upcoming,
+        detail: `Jusqu'au ${fmtDay(e.trial.endsAt)} · tout est ouvert, aucun abonnement.`,
+      }
+      : {
+        label: "Essai terminé",
+        tone: TONE.ended,
+        detail: `Depuis le ${fmtDay(e.trial.endsAt)} · reçoit messages et appels, ne peut ni envoyer ni appeler.`,
+      };
   }
   return {
     label: "Aucun abonnement",
@@ -293,6 +308,7 @@ export function SubscriptionCard({
           userName={userName}
           currentEnd={data.subscriber?.currentEnd ?? null}
           graceUntil={data.entitlements.graceUntil}
+          trialEnd={data.entitlements.trial?.active ? data.entitlements.trial.endsAt : null}
         />
       )}
 
