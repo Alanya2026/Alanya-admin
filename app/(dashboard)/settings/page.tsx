@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import { useSecuritySettings, useUpdateSecuritySettings } from "@/hooks/useSecurity";
 import { usePermissions } from "@/hooks/usePermissions";
+import { E2eeSettingsCard } from "@/components/settings/e2ee-settings-card";
 import { Save, Globe, Bell, Shield, Palette, Loader2, Lock, Smartphone, Clock } from "lucide-react";
 
 export default function SettingsPage() {
@@ -230,6 +231,8 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        <E2eeSettingsCard isSuper={isSuper} />
 
         {isSuper && (
           <Card className="border-0 shadow-sm">
