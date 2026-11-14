@@ -88,7 +88,17 @@ export function mockUsersResponse(params: UsersApiParams): UsersResponse {
   let items = [...mockUsers];
   const s = params.search?.toLowerCase();
   if (s) {
-    items = items.filter(u => u.nom.toLowerCase().includes(s) || u.pseudo.toLowerCase().includes(s) || u.alanyaPhone.includes(s));
+    items = items.filter(
+      (u) =>
+        u.nom.toLowerCase().includes(s) ||
+        u.pseudo.toLowerCase().includes(s) ||
+        u.alanyaPhone.includes(s) ||
+        String(u.alanyaID).includes(s),
+    );
+  }
+  if (params.ids?.length) {
+    const gardes = new Set(params.ids);
+    items = items.filter((u) => gardes.has(u.alanyaID));
   }
   if (params.status === 'online') items = items.filter(u => u.isOnline);
   if (params.status === 'banned') items = items.filter(u => u.exclus);

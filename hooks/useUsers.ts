@@ -29,13 +29,15 @@ interface UsersParams {
   to?: string;
   sort?: UsersApiParams['sort'];
   order?: UsersApiParams['order'];
+  ids?: number[];
 }
 
-export function useUsers(params: UsersParams) {
+export function useUsers(params: UsersParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['admin-users', params],
     queryFn: () => fetchUsers(params),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 

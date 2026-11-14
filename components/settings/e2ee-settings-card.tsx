@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { UserPicker, COHORT_IDS_MAX } from "@/components/settings/user-picker";
 import { useE2eeSettings, useUpdateE2eeSettings } from "@/hooks/useE2eeSettings";
 import { Clock, KeyRound, Loader2 } from "lucide-react";
-
-/** Lit « 12, 34 56 » en [12, 34, 56] ; rend null si un élément n'est pas un alanyaID. */
-function lireIds(texte: string): number[] | null {
-  const morceaux = texte.split(/[\s,;]+/).filter(Boolean);
-  const ids = morceaux.map((m) => Number(m));
-  return ids.every((n) => Number.isInteger(n) && n > 0) ? ids : null;
-}
 
 /**
  * Chiffrement de bout en bout : deux crans et une cohorte.
@@ -30,12 +24,12 @@ export function E2eeSettingsCard({ isSuper }: { isSuper: boolean }) {
   const update = useUpdateE2eeSettings();
   const { addToast } = useToast();
 
-  const [ids, setIds] = useState("");
+  const [cohortIds, setCohortIds] = useState<number[]>([]);
   const [pourcent, setPourcent] = useState("0");
 
   useEffect(() => {
     if (!data) return;
-    setIds(data.cohortIds.join(", "));
+    setCohortIds(data.cohortIds);
     setPourcent(String(data.cohortPercent));
   }, [data]);
 
@@ -53,14 +47,18 @@ export function E2eeSettingsCard({ isSuper }: { isSuper: boolean }) {
       },
     });
 
-  const idsLus = lireIds(ids);
+  // Le serveur trie et dédoublonne : on lui présente la même forme pour que le
+  // bouton « Enregistrer » ne s'allume que sur un vrai changement.
+  const idsTries = useMemo(
+    () => Array.from(new Set(cohortIds)).sort((a, b) => a - b),
+    [cohortIds],
+  );
   const pourcentLu = Number(pourcent);
   const pourcentValide = Number.isInteger(pourcentLu) && pourcentLu >= 0 && pourcentLu <= 100;
   const cohorteModifiee =
     !!data &&
     (pourcentLu !== data.cohortPercent ||
-      JSON.stringify(Array.from(new Set(idsLus ?? [])).sort((a, b) => a - b)) !==
-        JSON.stringify(data.cohortIds));
+      JSON.stringify(idsTries) !== JSON.stringify(data.cohortIds));
   const verrouille = !isSuper || isError || update.isPending;
 
   return (
@@ -125,17 +123,19 @@ export function E2eeSettingsCard({ isSuper }: { isSuper: boolean }) {
             <div className="space-y-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
               <p className="text-sm font-medium">Cohorte</p>
               <div className="space-y-2">
-                <Label htmlFor="e2ee-ids">Comptes inclus (alanyaID, séparés par des virgules)</Label>
-                <Input
-                  id="e2ee-ids"
-                  value={ids}
-                  onChange={(e) => setIds(e.target.value)}
-                  placeholder="ex. 12, 345"
+                <Label htmlFor="e2ee-ids">Comptes inclus</Label>
+                <UserPicker
+                  inputId="e2ee-ids"
+                  value={cohortIds}
+                  onChange={setCohortIds}
                   disabled={!isSuper}
+                  max={COHORT_IDS_MAX}
                 />
-                {idsLus === null && (
-                  <p className="text-xs text-red-600">Uniquement des alanyaID (entiers positifs).</p>
-                )}
+                <p className="text-xs text-zinc-500">
+                  Recherche par nom, pseudo, téléphone ou alanyaID.{" "}
+                  {idsTries.length.toLocaleString("fr-FR")} compte
+                  {idsTries.length > 1 ? "s" : ""} sélectionné{idsTries.length > 1 ? "s" : ""}.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="e2ee-pct">Part de tous les comptes (%)</Label>
@@ -152,8 +152,8 @@ export function E2eeSettingsCard({ isSuper }: { isSuper: boolean }) {
                 {!pourcentValide && <p className="text-xs text-red-600">Entier de 0 à 100.</p>}
               </div>
               <Button
-                onClick={() => appliquer({ cohortIds: idsLus ?? [], cohortPercent: pourcentLu })}
-                disabled={verrouille || idsLus === null || !pourcentValide || !cohorteModifiee}
+                onClick={() => appliquer({ cohortIds: idsTries, cohortPercent: pourcentLu })}
+                disabled={verrouille || !pourcentValide || !cohorteModifiee}
                 className="bg-indigo-600 text-white hover:bg-indigo-700"
               >
                 {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

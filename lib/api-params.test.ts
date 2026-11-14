@@ -64,6 +64,12 @@ describe('buildUsersApiParams', () => {
     expect(USER_SORT_COLUMNS).toEqual(['created_at', 'nom', 'last_seen', 'backup_last_at']);
   });
 
+  it('joint la liste d’alanyaID en un seul paramètre ids', () => {
+    const out = buildUsersApiParams({ ids: [3, 1, 3] });
+    expect(out.ids).toBe('3,1,3');
+    expect(buildUsersApiParams({ ids: [] })).not.toHaveProperty('ids');
+  });
+
   it('transmet le filtre de sauvegarde et le tri par dernière sauvegarde', () => {
     const out = buildUsersApiParams({ backup: 'never', sort: 'backup_last_at', order: 'asc' });
     expect(out.backup).toBe('never');

@@ -29,6 +29,8 @@ export interface UsersApiParams {
   order?: OrderDir;
   /** `never` | `stale` | `recent` — état de sauvegarde du compte. */
   backup?: string;
+  /** Liste explicite d'alanyaID — résolution d'une sélection en une requête. */
+  ids?: number[];
 }
 
 /**
@@ -40,6 +42,7 @@ export function buildUsersApiParams(query: UsersApiParams): Record<string, strin
   const params: Record<string, string | number | undefined> = {};
 
   if (query.search) params.search = query.search;
+  if (query.ids?.length) params.ids = query.ids.join(',');
   if (query.status) params.status = query.status;
   if (query.from) params.from = query.from;
   if (query.to) params.to = query.to;
