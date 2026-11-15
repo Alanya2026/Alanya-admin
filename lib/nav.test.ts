@@ -11,6 +11,7 @@ import {
   isNavItemActive,
   keepKnownGroupIds,
   keepKnownNavHrefs,
+  movePinnedHref,
   resolvePinned,
   togglePinnedHref,
 } from "./nav";
@@ -101,6 +102,20 @@ describe("togglePinnedHref", () => {
 
   it("permet de tout dépinger", () => {
     expect(togglePinnedHref(["/dashboard"], "/dashboard")).toEqual([]);
+  });
+});
+
+describe("movePinnedHref", () => {
+  it("échange deux épingles voisines dans les deux sens", () => {
+    const pins = ["/dashboard", "/users", "/reports"];
+    expect(movePinnedHref(pins, "/reports", "/users")).toEqual(["/dashboard", "/reports", "/users"]);
+    expect(movePinnedHref(pins, "/dashboard", "/users")).toEqual(["/users", "/dashboard", "/reports"]);
+  });
+
+  it("ne change rien sur une adresse inconnue ou une cible identique", () => {
+    const pins = ["/dashboard", "/users"];
+    expect(movePinnedHref(pins, "/inconnue", "/users")).toBe(pins);
+    expect(movePinnedHref(pins, "/dashboard", "/dashboard")).toBe(pins);
   });
 });
 

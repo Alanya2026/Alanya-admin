@@ -18,6 +18,7 @@ import {
   isNavItemActive,
   keepKnownGroupIds,
   keepKnownNavHrefs,
+  movePinnedHref,
   togglePinnedHref,
   type NavItem,
 } from "@/lib/nav";
@@ -41,6 +42,7 @@ function NavButton({
   pinned,
   pinLimitReached,
   onTogglePin,
+  onReorder,
   onNavigate,
 }: {
   item: NavItem;
@@ -50,6 +52,8 @@ function NavButton({
   pinned?: boolean;
   pinLimitReached?: boolean;
   onTogglePin?: () => void;
+  /** Réordonne l'épingle d'un cran (Alt + flèches) — souris non requise. */
+  onReorder?: (direction: -1 | 1) => void;
   onNavigate: () => void;
 }) {
   const pinnable = !collapsed && Boolean(onTogglePin);
@@ -63,8 +67,17 @@ function NavButton({
     <div className="group relative">
       <button
         onClick={onNavigate}
+        onKeyDown={(event) => {
+          // Le glisser-déposer n'existe pas au clavier : Alt + flèches fait le
+          // même travail, et seulement sur les épingles.
+          if (!onReorder || !event.altKey) return;
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          onReorder(event.key === "ArrowUp" ? -1 : 1);
+        }}
         title={collapsed ? item.label : undefined}
         aria-current={active ? "page" : undefined}
+        aria-keyshortcuts={onReorder ? "Alt+ArrowUp Alt+ArrowDown" : undefined}
         className={cn(
           "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
           pinnable && "pr-10",
@@ -138,6 +151,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   /** Raccourcis épinglés : les trois par défaut tant que rien n'est mémorisé. */
   const [pinnedHrefs, setPinnedHrefs] = useState<string[]>(DEFAULT_PINNED_HREFS);
   const [pinsRestored, setPinsRestored] = useState(false);
+
+  /** Réordonnancement : adresse en cours de glissement et cible survolée. */
+  const [draggedHref, setDraggedHref] = useState<string | null>(null);
+  const [dropHref, setDropHref] = useState<string | null>(null);
+  const [pinAnnouncement, setPinAnnouncement] = useState("");
 
   const { data: openReports } = useOpenReports(4, can("reports.read"));
 
@@ -233,6 +251,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const togglePin = (href: string) =>
     setPinnedHrefs((prev) => togglePinnedHref(prev, href));
 
+  /**
+   * Déplace une épingle à la place d'une autre. L'annonce vocale évite que le
+   * réordonnancement clavier soit muet : sans elle, rien ne confirme le
+   * déplacement à qui ne voit pas la barre.
+   */
+  const movePin = (href: string, targetHref: string) => {
+    const next = movePinnedHref(pinnedHrefs, href, targetHref);
+    if (next === pinnedHrefs) return;
+    setPinnedHrefs(next);
+    const label = pinned.find((item) => item.href === href)?.label ?? "Entrée";
+    setPinAnnouncement(`${label} : position ${next.indexOf(href) + 1} sur ${next.length}.`);
+  };
+
+  /** Alt + flèches : échange avec l'épingle voisine affichée. */
+  const reorderPin = (href: string, direction: -1 | 1) => {
+    const index = pinned.findIndex((item) => item.href === href);
+    const neighbour = pinned[index + direction];
+    if (!neighbour) return;
+    movePin(href, neighbour.href);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       {/* Sidebar */}
@@ -258,18 +297,58 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav aria-label="Navigation principale" className="flex-1 px-2 py-4 overflow-y-auto">
           <div className="space-y-1">
             {pinned.map((item) => (
-              <NavButton
+              <div
                 key={item.href}
-                item={item}
-                active={isNavItemActive(pathname, item.href)}
-                collapsed={collapsed}
-                badge={badgeFor(item)}
-                pinned
-                pinLimitReached={pinsAtMax}
-                onTogglePin={() => togglePin(item.href)}
-                onNavigate={() => router.push(item.href)}
-              />
+                draggable={!collapsed}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  // Le type text/plain permet aussi de déposer ailleurs sans
+                  // casser le glissement (Firefox exige une donnée).
+                  event.dataTransfer.setData("text/plain", item.href);
+                  setDraggedHref(item.href);
+                }}
+                onDragOver={(event) => {
+                  if (!draggedHref || draggedHref === item.href) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDropHref(item.href);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const from = draggedHref ?? event.dataTransfer.getData("text/plain");
+                  if (from) movePin(from, item.href);
+                  setDraggedHref(null);
+                  setDropHref(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedHref(null);
+                  setDropHref(null);
+                }}
+                className={cn(
+                  "rounded-lg",
+                  draggedHref === item.href && "opacity-40",
+                  dropHref === item.href && "ring-2 ring-indigo-400"
+                )}
+              >
+                <NavButton
+                  item={item}
+                  active={isNavItemActive(pathname, item.href)}
+                  collapsed={collapsed}
+                  badge={badgeFor(item)}
+                  pinned
+                  pinLimitReached={pinsAtMax}
+                  onTogglePin={() => togglePin(item.href)}
+                  onReorder={collapsed ? undefined : (direction) => reorderPin(item.href, direction)}
+                  onNavigate={() => router.push(item.href)}
+                />
+              </div>
             ))}
+
+            {/* Le déplacement clavier est annoncé ici ; le glisser-déposer, lui,
+                se voit à l'écran. */}
+            <p aria-live="polite" className="sr-only">
+              {pinAnnouncement}
+            </p>
 
             {!pinsAreDefault && !collapsed && (
               <button

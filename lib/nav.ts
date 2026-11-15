@@ -223,6 +223,27 @@ export function togglePinnedHref(hrefs: string[], href: string): string[] {
 }
 
 /**
+ * Déplace une épingle à la place d'une autre, sans toucher au reste.
+ *
+ * Raisonne sur les adresses plutôt que sur les positions : une épingle devenue
+ * invisible (droit perdu) décale les indices affichés sans être dans la liste
+ * mémorisée.
+ */
+export function movePinnedHref(
+  hrefs: string[],
+  movedHref: string,
+  targetHref: string,
+): string[] {
+  const from = hrefs.indexOf(movedHref);
+  const to = hrefs.indexOf(targetHref);
+  if (from < 0 || to < 0 || from === to) return hrefs;
+  const next = [...hrefs];
+  next.splice(from, 1);
+  next.splice(to, 0, movedHref);
+  return next;
+}
+
+/**
  * Lit les épingles mémorisées. `null` quand la valeur n'est pas une liste :
  * l'appelant garde alors les épingles par défaut plutôt que de tout vider sur
  * un stockage corrompu.
