@@ -6,7 +6,6 @@ import { useAdminProfile } from "@/hooks/useAdminProfile";
 import { ProfileHero } from "@/components/profile/ProfileHero";
 import { ProfileDetailsCard } from "@/components/profile/ProfileDetailsCard";
 import { PermissionsCard } from "@/components/profile/PermissionsCard";
-import { AccountCard } from "@/components/profile/AccountCard";
 import { AvatarCard } from "@/components/profile/AvatarCard";
 import { SecurityCard } from "@/components/profile/SecurityCard";
 import { Button } from "@/components/ui/button";
@@ -57,9 +56,8 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <div className="h-52 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-5 h-80 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-            <div className="lg:col-span-4 h-80 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-            <div className="lg:col-span-3 h-80 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+            <div className="lg:col-span-6 h-80 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+            <div className="lg:col-span-6 h-80 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
             <div className="lg:col-span-7 h-64 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
             <div className="lg:col-span-5 h-64 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
           </div>
@@ -82,7 +80,7 @@ export default function ProfilePage() {
           <ProfileHero profile={displayProfile} onEdit={handleEdit} />
 
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-6">
               <ProfileDetailsCard
                 profile={displayProfile}
                 editing={editing}
@@ -90,14 +88,11 @@ export default function ProfilePage() {
                 onProfileUpdate={(updated) => setLocalProfile(updated)}
               />
             </div>
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-6">
               <PermissionsCard
                 permissions={displayProfile.permissions ?? []}
                 typeCompte={displayProfile.typeCompte}
               />
-            </div>
-            <div className="lg:col-span-3">
-              <AccountCard profile={displayProfile} />
             </div>
             <div className="lg:col-span-7">
               <AvatarCard

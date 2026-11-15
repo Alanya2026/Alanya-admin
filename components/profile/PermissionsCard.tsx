@@ -147,10 +147,6 @@ export function PermissionsCard({ permissions, typeCompte }: PermissionsCardProp
               <span>Voir le détail des {total} droits</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <p className="mt-3 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
-              Calculés par le serveur à chaque connexion. Aucun code technique
-              n&apos;est nécessaire pour les comprendre.
-            </p>
           </div>
         </CardContent>
       </Card>

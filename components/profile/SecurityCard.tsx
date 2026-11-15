@@ -59,10 +59,6 @@ export function SecurityCard() {
             </span>
           </div>
 
-          <p className="mt-auto pt-4 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
-            Le formulaire s&apos;ouvre dans une fenêtre : la page garde sa
-            hauteur et le reste de vos réglages reste visible.
-          </p>
         </CardContent>
       </Card>
 

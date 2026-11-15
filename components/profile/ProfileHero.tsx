@@ -54,7 +54,7 @@ export function ProfileHero({ profile, onEdit }: ProfileHeroProps) {
 
   const meta = [
     {
-      label: "Identifiant",
+      label: "AlanyaID",
       value: `#${profile.alanyaID}`,
       icon: Hash,
     },

@@ -220,7 +220,7 @@ button{font-family:inherit}
 .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px;align-items:stretch}
 .bento .card{display:flex;flex-direction:column}
 .bento .card-b{flex:1;display:flex;flex-direction:column}
-.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s7{grid-column:span 7}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}
 .flexfill{flex:1}
 .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;border:1.5px dashed var(--border-strong);border-radius:8px;background:var(--bg);padding:16px 10px;color:var(--muted2)}
 .dropzone .ic{width:18px;height:18px}
@@ -483,7 +483,7 @@ tbody tr:last-child td{border-bottom:0}
       <div class="letter">A</div>
       <div>
         <h2>Bento identité</h2>
-        <p>Le bandeau remplace l'en-tête et les colonnes : l'identité occupe toute la largeur, le reste se répartit en cinq cartes de tailles différentes.</p>
+        <p>Le bandeau remplace l'en-tête et les colonnes : l'identité occupe toute la largeur, le reste se répartit en quatre cartes de tailles différentes.</p>
       </div>
       <div class="chips"><span class="chip">Plus de colonnes</span><span class="chip">Impact visuel</span><span class="chip eff">Effort ~2–3 h</span></div>
     </div>
@@ -505,7 +505,7 @@ tbody tr:last-child td{border-bottom:0}
             </div>
           </div>
           <div class="hero-meta">
-            <div><span class="mlabel">Identifiant</span><span class="mval"><i data-icon="hash"></i>#1042</span></div>
+            <div><span class="mlabel">AlanyaID</span><span class="mval"><i data-icon="hash"></i>#1042</span></div>
             <div><span class="mlabel">Pays</span><span class="mval"><i data-icon="map-pin"></i>France</span></div>
             <div><span class="mlabel">Membre depuis</span><span class="mval"><i data-icon="calendar"></i>12 mars 2024</span></div>
             <div><span class="mlabel">Dernière connexion</span><span class="mval"><i data-icon="clock"></i>Aujourd'hui, 09:42</span></div>
@@ -513,7 +513,7 @@ tbody tr:last-child td{border-bottom:0}
         </div>
 
         <div class="bento">
-          <div class="card s5">
+          <div class="card s6">
             <div class="card-h">
               <div class="t"><i data-icon="user"></i>Coordonnées</div>
               <button class="btn ghost sm"><i data-icon="pencil"></i>Modifier</button>
@@ -528,7 +528,7 @@ tbody tr:last-child td{border-bottom:0}
             </div>
           </div>
 
-          <div class="card s4">
+          <div class="card s6">
             <div class="card-h">
               <div class="t"><i data-icon="key"></i>Ce que vous pouvez faire</div>
               <span class="badge neutral">62</span>
@@ -573,19 +573,6 @@ tbody tr:last-child td{border-bottom:0}
               </div>
               <div class="flexfill"></div>
               <button class="btn sm" style="width:100%;justify-content:space-between;margin-top:10px">Voir le détail des 62 droits <i data-icon="chevron-right"></i></button>
-              <div class="hint"><i data-icon="key"></i> Chaque droit est écrit en français clair ; le code technique reste dans le détail.</div>
-            </div>
-          </div>
-
-          <div class="card s3">
-            <div class="card-h"><div class="t"><i data-icon="info"></i>Compte</div></div>
-            <div class="card-b">
-              <div class="frow stacked"><span class="flabel">Rôle</span><span class="fval">Super-Admin</span></div>
-              <div class="frow stacked"><span class="flabel">Identifiant</span><span class="fval">#1042</span></div>
-              <div class="frow stacked"><span class="flabel">Inscrit le</span><span class="fval">12 mars 2024</span></div>
-              <div class="frow stacked"><span class="flabel">Dernière connexion</span><span class="fval">Aujourd'hui, 09:42</span></div>
-              <div class="flexfill"></div>
-              <div class="hint"><i data-icon="lock"></i> Non modifiable.</div>
             </div>
           </div>
 
@@ -628,7 +615,7 @@ tbody tr:last-child td{border-bottom:0}
     </div>
     <div class="notes">
       <div class="note"><b>01</b><p><strong>Un seul bloc d'identité, pleine largeur.</strong> Avatar, nom, rôle et quatre métadonnées : plus de carte isolée à gauche du vide.</p></div>
-      <div class="note"><b>02</b><p><strong>Grille 12 colonnes, deux rangées.</strong> 5 + 4 + 3 en haut, 7 + 5 en bas : les cartes s'étirent à la même hauteur, la page se lit en un écran.</p></div>
+      <div class="note"><b>02</b><p><strong>Grille 12 colonnes, deux rangées.</strong> 6 + 6 en haut, 7 + 5 en bas : les cartes s'étirent à la même hauteur, la page se lit en un écran.</p></div>
       <div class="note"><b>03</b><p><strong>Les permissions remplacent le vide.</strong> Cinq groupes écrits en français simple, avec compteur ; le détail s'ouvre dans une fenêtre, code technique en second plan.</p></div>
       <div class="note"><b>04</b><p><strong>Le mot de passe sort du flux.</strong> Trois champs gagnent une boîte de dialogue : ~300 px de page en moins.</p></div>
     </div>
