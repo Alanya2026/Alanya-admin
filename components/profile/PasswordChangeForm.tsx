@@ -9,7 +9,19 @@ import { useChangeAdminPassword } from "@/hooks/useAdminProfile";
 import { useToast } from "@/components/ui/toast";
 import { Loader2, Lock, Eye, EyeOff } from "lucide-react";
 
-export function PasswordChangeForm() {
+interface PasswordChangeFormProps {
+  /**
+   * Dans une boîte de dialogue, la carte et son titre feraient doublon avec
+   * l'en-tête du dialogue : on ne rend alors que les champs.
+   */
+  embedded?: boolean;
+  onSuccess?: () => void;
+}
+
+export function PasswordChangeForm({
+  embedded = false,
+  onSuccess,
+}: PasswordChangeFormProps) {
   const { addToast } = useToast();
   const changeMutation = useChangeAdminPassword();
 
@@ -41,6 +53,7 @@ export function PasswordChangeForm() {
           setCurrentPassword("");
           setNewPassword("");
           setConfirmPassword("");
+          onSuccess?.();
         },
         onError: (err: Error & { response?: { data?: { error?: string } } }) => {
           addToast({
@@ -53,6 +66,84 @@ export function PasswordChangeForm() {
     );
   }
 
+  const fields = (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="current-password">Mot de passe actuel</Label>
+        <div className="relative">
+          <Input
+            id="current-password"
+            type={showCurrent ? "text" : "password"}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowCurrent(!showCurrent)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            aria-label={showCurrent ? "Masquer le mot de passe actuel" : "Afficher le mot de passe actuel"}
+          >
+            {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="new-password">Nouveau mot de passe</Label>
+        <div className="relative">
+          <Input
+            id="new-password"
+            type={showNew ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowNew(!showNew)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            aria-label={showNew ? "Masquer le nouveau mot de passe" : "Afficher le nouveau mot de passe"}
+          >
+            {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        {newPassword && newPassword.length < 6 && (
+          <p className="text-xs text-amber-600">Minimum 6 caractères</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+        <Input
+          id="confirm-password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+        {confirmPassword && newPassword !== confirmPassword && (
+          <p className="text-xs text-red-500">Les mots de passe ne correspondent pas</p>
+        )}
+      </div>
+
+      <Button
+        onClick={handleChange}
+        disabled={!currentPassword || !newPassword || !confirmPassword || changeMutation.isPending}
+        className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+      >
+        {changeMutation.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+        ) : (
+          <Lock className="h-4 w-4 mr-1.5" />
+        )}
+        Modifier le mot de passe
+      </Button>
+    </div>
+  );
+
+  if (embedded) return fields;
+
   return (
     <Card className="border-0 shadow-sm bg-white dark:bg-zinc-900">
       <CardHeader className="pb-3">
@@ -61,77 +152,7 @@ export function PasswordChangeForm() {
           Changer le mot de passe
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="current-password">Mot de passe actuel</Label>
-          <div className="relative">
-            <Input
-              id="current-password"
-              type={showCurrent ? "text" : "password"}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrent(!showCurrent)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-            >
-              {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="new-password">Nouveau mot de passe</Label>
-          <div className="relative">
-            <Input
-              id="new-password"
-              type={showNew ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-            <button
-              type="button"
-              onClick={() => setShowNew(!showNew)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-            >
-              {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          {newPassword && newPassword.length < 6 && (
-            <p className="text-xs text-amber-600">Minimum 6 caractères</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
-          <Input
-            id="confirm-password"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-          {confirmPassword && newPassword !== confirmPassword && (
-            <p className="text-xs text-red-500">Les mots de passe ne correspondent pas</p>
-          )}
-        </div>
-
-        <Button
-          onClick={handleChange}
-          disabled={!currentPassword || !newPassword || !confirmPassword || changeMutation.isPending}
-          className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
-        >
-          {changeMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-          ) : (
-            <Lock className="h-4 w-4 mr-1.5" />
-          )}
-          Modifier le mot de passe
-        </Button>
-      </CardContent>
+      <CardContent>{fields}</CardContent>
     </Card>
   );
 }

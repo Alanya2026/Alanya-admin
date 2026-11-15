@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Admin · Mon profil — 4 stratégies d'agencement</title>
+<style>
+@font-face{font-family:"GeistMock";src:url("../app/fonts/GeistVF.woff") format("woff");font-weight:100 900;font-display:swap}
+
+:root{
+  --bg:#fafafa;--panel:#fff;--card:#fff;--border:#e6e6ea;--border-soft:#f0f0f3;--border-strong:#d4d4d8;
+  --text:#18181b;--muted:#71717a;--muted2:#a1a1aa;--dot:rgba(24,24,27,.06);
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.05);
+  --indigo:#6366f1;--violet:#8b5cf6;
+  --indigo-soft:#eef2ff;--indigo-text:#4338ca;--indigo-border:#c7d2fe;
+  --amber-soft:#fffbeb;--amber:#b45309;--amber-border:#fde68a;
+  --green-soft:#ecfdf5;--green:#047857;--green-border:#a7f3d0;
+  --red-soft:#fef2f2;--red:#b91c1c;--red-border:#fecaca;
+}
+.dark{
+  --bg:#09090b;--panel:#101013;--card:#151518;--border:#28282d;--border-soft:#1f1f24;--border-strong:#3f3f46;
+  --text:#f4f4f5;--muted:#a1a1aa;--muted2:#71717a;--dot:rgba(255,255,255,.05);
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+  --indigo-soft:rgba(99,102,241,.16);--indigo-text:#a5b4fc;--indigo-border:rgba(99,102,241,.38);
+  --amber-soft:rgba(180,83,9,.18);--amber:#fcd34d;--amber-border:rgba(252,211,77,.28);
+  --green-soft:rgba(16,185,129,.14);--green:#6ee7b7;--green-border:rgba(110,231,183,.24);
+  --red-soft:rgba(239,68,68,.14);--red:#fca5a5;--red-border:rgba(252,165,165,.3);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;font-family:"GeistMock","Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(var(--dot) 1px,transparent 1px);background-size:24px 24px;
+}
+button{font-family:inherit}
+[hidden]{display:none!important}
+
+/* ---------- review chrome ---------- */
+.topbar{
+  position:sticky;top:0;z-index:60;height:56px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.brandmark{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brandmark .logo{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:11px;color:#fff;font-weight:800;background:linear-gradient(135deg,var(--indigo),var(--violet));box-shadow:0 4px 12px -4px rgba(99,102,241,.8)}
+.brandmark span.sub{font-weight:500;color:var(--muted)}
+.seg{display:flex;gap:2px;padding:3px;border:1px solid var(--border);border-radius:9px;background:var(--panel);margin-left:auto;overflow-x:auto}
+.seg button{border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:650;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.seg button[aria-selected="true"]{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;box-shadow:0 4px 10px -6px rgba(99,102,241,1)}
+.toolbtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.toolbtn:hover{color:var(--text)}
+.toolbtn .ic{width:13px;height:13px}
+
+.wrap{max-width:1200px;margin:0 auto;padding:30px 22px 100px}
+
+/* ---------- intro ---------- */
+.eyebrow{font-size:10.5px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo)}
+.intro h1{font-size:clamp(24px,3.2vw,32px);letter-spacing:-.035em;line-height:1.12;margin:10px 0 12px;max-width:22ch}
+.intro .lead{color:var(--muted);font-size:13.5px;line-height:1.7;max-width:82ch;margin:0}
+.intro .lead b{color:var(--text);font-weight:600}
+.diag{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:24px}
+.diag article{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px 14px;box-shadow:var(--shadow)}
+.diag .dnum{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--red);background:var(--red-soft);border:1px solid var(--red-border);padding:2px 6px;border-radius:5px;margin-bottom:8px}
+.diag h3{font-size:12px;margin:0 0 5px;letter-spacing:-.01em}
+.diag p{margin:0;font-size:11px;line-height:1.6;color:var(--muted)}
+.diag code{font-size:10px;background:var(--bg);border:1px solid var(--border-soft);border-radius:4px;padding:1px 4px}
+
+/* ---------- strategy block ---------- */
+.strategy{margin-top:48px;scroll-margin-top:74px}
+.strat-head{display:flex;gap:13px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap}
+.letter{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--indigo),var(--violet));box-shadow:0 8px 18px -10px rgba(99,102,241,1)}
+.strat-head h2{font-size:19px;margin:0;letter-spacing:-.025em}
+.strat-head p{margin:4px 0 0;font-size:12px;line-height:1.6;color:var(--muted);max-width:72ch}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;align-self:center}
+.chip{font-size:10px;font-weight:650;padding:4px 9px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--muted);white-space:nowrap}
+.chip.eff{background:var(--indigo-soft);border-color:var(--indigo-border);color:var(--indigo-text)}
+
+/* ---------- app frame ---------- */
+.app{background:var(--bg);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:0 30px 70px -40px rgba(24,24,27,.45),0 2px 8px rgba(24,24,27,.04)}
+.dark .app{box-shadow:0 30px 70px -40px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02)}
+.chrome{height:32px;display:flex;align-items:center;gap:7px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.dots{display:flex;gap:5px;margin-right:4px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--border-strong)}
+.url{height:19px;flex:1;max-width:400px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:5px;background:var(--bg);border:1px solid var(--border-soft);font-size:9.5px;color:var(--muted)}
+.url .ic{width:9px;height:9px}
+.shell{display:flex;min-height:600px}
+.side{width:200px;flex:0 0 200px;background:var(--panel);border-right:1px solid var(--border);padding:9px 7px 11px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:8px;padding:1px 6px 11px;margin-bottom:7px;border-bottom:1px solid var(--border-soft)}
+.brand .logo{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:800;background:linear-gradient(135deg,var(--indigo),var(--violet))}
+.brand b{font-size:11.5px;letter-spacing:-.015em}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;align-items:center;gap:8px;height:29px;padding:0 8px;border-radius:7px;font-size:11px;color:var(--muted);text-decoration:none}
+.nav a .ic{width:13px;height:13px}
+.nav a.on{background:var(--indigo-soft);color:var(--indigo-text);font-weight:650}
+.nav a.mutedlink{color:var(--muted2)}
+.side-foot{margin-top:auto;padding-top:8px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:1px}
+.side-foot a{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;border-radius:7px;font-size:10.5px;font-weight:600;color:var(--muted);text-decoration:none}
+.side-foot a.out{color:var(--red)}
+.side-foot .ic{width:13px;height:13px}
+.body{flex:1;min-width:0;display:flex;flex-direction:column}
+.head{height:46px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 15px}
+.head .hleft{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.head .hleft .ic{width:14px;height:14px}
+.head .hright{display:flex;align-items:center;gap:7px}
+.iconbtn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--panel);display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.iconbtn .ic{width:12px;height:12px}
+.headavatar{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:750;background:linear-gradient(135deg,var(--indigo),var(--violet))}
+.main{flex:1;min-width:0;padding:19px 21px 23px}
+.main.fade{max-height:700px;overflow:hidden;position:relative}
+.main.fade::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(to bottom,transparent,var(--bg));pointer-events:none}
+
+/* ---------- mock page elements ---------- */
+.phead{display:flex;align-items:center;gap:10px;margin-bottom:15px}
+.phead .txt{min-width:0}
+.ptitle{display:flex;align-items:center;gap:7px;font-size:17px;font-weight:700;letter-spacing:-.025em;margin:0}
+.ptitle .ic{width:16px;height:16px;color:var(--indigo)}
+.psub{font-size:10.5px;color:var(--muted);margin:3px 0 0}
+.phead .actions{margin-left:auto;display:flex;gap:7px;align-items:center}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px 9px}
+.card-h .t{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:650;letter-spacing:-.005em}
+.card-h .t .ic{width:12.5px;height:12.5px;color:var(--indigo)}
+.card-b{padding:0 13px 13px}
+.card-b.tight{padding-top:0}
+.center{text-align:center}
+.rule{height:1px;background:var(--border-soft);margin:11px 0}
+.hint{font-size:9.5px;line-height:1.5;color:var(--muted2);margin:9px 0 0}
+.hint .ic{width:10px;height:10px;vertical-align:-1px}
+
+.avatar{display:grid;place-items:center;border-radius:50%;color:#fff;font-weight:750;letter-spacing:-.02em;background:linear-gradient(135deg,var(--indigo),var(--violet))}
+.avatar.lg{width:74px;height:74px;font-size:24px}
+.avatar.md{width:58px;height:58px;font-size:19px}
+.avatar.sm{width:38px;height:38px;font-size:13px}
+
+.id-name{font-size:15px;font-weight:700;letter-spacing:-.02em;margin-top:9px}
+.id-pseudo{font-size:10.5px;color:var(--muted);margin-top:2px}
+.id-mail{font-size:9.5px;color:var(--muted2);margin-top:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:650;padding:2.5px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.badge .ic{width:9px;height:9px}
+.badge.role{background:var(--amber-soft);border-color:var(--amber-border);color:var(--amber)}
+.badge.ok{background:var(--green-soft);border-color:var(--green-border);color:var(--green)}
+.badge.neutral{background:var(--bg);border-color:var(--border);color:var(--muted)}
+.badge.dupe{background:var(--red-soft);border-color:var(--red-border);color:var(--red);border-style:dashed}
+.pulse{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 0 2.5px color-mix(in srgb,currentColor 22%,transparent)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:29px;padding:0 10px;border-radius:7px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn .ic{width:11.5px;height:11.5px}
+.btn.primary{background:linear-gradient(135deg,var(--indigo),var(--violet));border-color:transparent;color:#fff;box-shadow:0 6px 14px -8px rgba(99,102,241,.95)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.sm{height:24px;font-size:9.5px;padding:0 8px;border-radius:6px}
+.btn.sm .ic{width:10px;height:10px}
+.btn.block{width:100%}
+.square{width:29px;padding:0}
+
+.lbl{display:block;font-size:9.5px;font-weight:650;color:var(--muted);margin-bottom:4px}
+.field{margin-bottom:9px}
+.inp{height:30px;display:flex;align-items:center;padding:0 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inp.ph{color:var(--muted2)}
+.input{height:30px;width:100%;padding:0 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg);font-size:11px;color:var(--text);font-family:inherit;outline:none}
+.input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.frow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px dashed var(--border-soft);min-width:0}
+.frow:last-child{border-bottom:0}
+.frow .fic{width:23px;height:23px;flex:0 0 23px;border-radius:6px;display:grid;place-items:center;background:var(--bg);border:1px solid var(--border-soft);color:var(--muted2)}
+.frow .fic .ic{width:11px;height:11px}
+.frow .flabel{font-size:10px;color:var(--muted);flex:0 0 auto}
+.frow .fval{margin-left:auto;font-size:10.5px;font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .pen{width:17px;height:17px;flex:0 0 17px;border-radius:5px;display:grid;place-items:center;color:var(--muted2);opacity:.4}
+.frow:hover .pen,.frow .pen.show{opacity:1}
+.frow .pen .ic{width:9.5px;height:9.5px}
+.frow.stacked{display:block;padding:5px 0}
+.frow.stacked .flabel{display:block;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);margin-bottom:1px}
+.frow.stacked .fval{display:block;margin-left:0;text-align:left;font-size:10.5px}
+
+.pgrid{display:flex;flex-wrap:wrap;gap:4px}
+.pchip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:600;padding:2.5px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.pchip .ic{width:8px;height:8px;color:var(--green)}
+.pgroups{display:flex;flex-direction:column;gap:10px}
+.pgroup{display:flex;align-items:flex-start;gap:8px}
+.pgroup .pic{width:25px;height:25px;flex:0 0 25px;border-radius:7px;display:grid;place-items:center;background:var(--indigo-soft);border:1px solid var(--indigo-border);color:var(--indigo-text)}
+.pgroup .pic .ic{width:11.5px;height:11.5px}
+.pgroup:nth-child(2) .pic{background:var(--red-soft);border-color:var(--red-border);color:var(--red)}
+.pgroup:nth-child(3) .pic{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.28);color:var(--violet)}
+.pgroup:nth-child(4) .pic{background:var(--green-soft);border-color:var(--green-border);color:var(--green)}
+.pgroup:nth-child(5) .pic{background:var(--amber-soft);border-color:var(--amber-border);color:var(--amber)}
+.pgroup .pbody{flex:1;min-width:0}
+.pgroup .pt{display:flex;align-items:baseline;justify-content:space-between;gap:6px;font-size:10.5px;font-weight:650;letter-spacing:-.005em}
+.pgroup .pt em{font-style:normal;font-size:8.5px;font-weight:600;color:var(--muted2);white-space:nowrap}
+.pgroup .ps{font-size:9px;line-height:1.45;color:var(--muted2);margin-top:1px}
+
+.note-box{display:flex;gap:7px;padding:8px 9px;border-radius:7px;background:var(--indigo-soft);border:1px solid var(--indigo-border);color:var(--indigo-text);font-size:9.5px;line-height:1.5}
+.note-box .ic{width:11px;height:11px;flex:0 0 11px;margin-top:1px}
+.note-box.amber{background:var(--amber-soft);border-color:var(--amber-border);color:var(--amber)}
+
+.void{border:1.5px dashed var(--red-border);border-radius:11px;background:repeating-linear-gradient(135deg,var(--red-soft) 0 8px,transparent 8px 16px);display:grid;place-items:center;color:var(--red);font-size:10.5px;font-weight:650;text-align:center;padding:16px}
+
+/* ---------- strategy A ---------- */
+.hero{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);margin-bottom:11px}
+.hero::before{content:"";position:absolute;left:-15%;top:-120%;width:60%;height:280%;background:radial-gradient(closest-side,rgba(99,102,241,.22),transparent);filter:blur(4px)}
+.hero::after{content:"";position:absolute;right:-8%;bottom:-160%;width:45%;height:280%;background:radial-gradient(closest-side,rgba(139,92,246,.14),transparent)}
+.hero-top{position:relative;display:flex;align-items:center;gap:15px;padding:18px 18px 15px}
+.hero-id{min-width:0}
+.hero-name{display:flex;align-items:center;gap:7px;font-size:20px;font-weight:750;letter-spacing:-.035em;margin:0;flex-wrap:wrap}
+.hero-sub{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin-top:5px}
+.dotsep{width:3px;height:3px;border-radius:50%;background:var(--muted2)}
+.hero-actions{margin-left:auto;display:flex;gap:7px;align-self:flex-start}
+.hero-meta{position:relative;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border-soft);background:var(--panel)}
+.hero-meta>div{padding:9px 14px;border-right:1px solid var(--border-soft);min-width:0}
+.hero-meta>div:last-child{border-right:0}
+.mlabel{display:block;font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px}
+.mval{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mval .ic{width:10px;height:10px;color:var(--muted)}
+
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:11px;align-items:stretch}
+.bento .card{display:flex;flex-direction:column}
+.bento .card-b{flex:1;display:flex;flex-direction:column}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s7{grid-column:span 7}
+.flexfill{flex:1}
+.dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;border:1.5px dashed var(--border-strong);border-radius:8px;background:var(--bg);padding:16px 10px;color:var(--muted2)}
+.dropzone .ic{width:18px;height:18px}
+.dropzone b{font-size:10.5px;color:var(--muted);font-weight:600}
+.dropzone span{font-size:9px}
+.photo-row{display:flex;gap:14px;align-items:center}
+.photo-row .avatar{flex:0 0 74px}
+
+/* ---------- strategy B ---------- */
+.grid-b{display:grid;grid-template-columns:minmax(0,296px) minmax(0,1fr);gap:11px;align-items:start}
+.railcard .card-b{padding-top:14px}
+.ministats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 11px}
+.ministats div{background:var(--bg);border:1px solid var(--border-soft);border-radius:7px;padding:6px 7px}
+.ministats span{display:block;font-size:8.5px;color:var(--muted2);margin-bottom:2px}
+.ministats b{font-size:9.5px;font-weight:650;line-height:1.3;display:block}
+.tabs{display:flex;gap:2px;padding:0 11px;border-bottom:1px solid var(--border);background:var(--panel);border-radius:11px 11px 0 0}
+.tab{position:relative;height:36px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
+.tab .ic{width:11.5px;height:11.5px}
+.tab.on{color:var(--indigo-text);font-weight:700}
+.tab.on::after{content:"";position:absolute;left:7px;right:7px;bottom:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--indigo),var(--violet))}
+.pane{padding:14px}
+.pane-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.pane-h h4{font-size:11.5px;margin:0;letter-spacing:-.01em}
+.pane-h p{font-size:9.5px;color:var(--muted);margin:2px 0 0}
+.kv{min-width:0}
+.kv span{display:block;font-size:8.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2);margin-bottom:2px}
+.kv b{font-size:10.5px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.formfoot{display:flex;justify-content:flex-end;gap:7px;margin-top:12px;padding-top:11px;border-top:1px solid var(--border-soft)}
+
+/* ---------- strategy C ---------- */
+.grid-c{display:grid;grid-template-columns:minmax(0,248px) minmax(0,1fr);gap:11px;align-items:start}
+.rail-stack{display:flex;flex-direction:column;gap:9px}
+.rail-stack .card-b{padding-top:0}
+.sect{padding:0 14px}
+.sect+.sect{border-top:1px solid var(--border-soft)}
+.sect-h{display:flex;align-items:center;gap:7px;font-size:8.5px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);padding:12px 0 7px}
+.sect-h::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+.erow{display:flex;align-items:center;gap:9px;padding:5px 0;min-width:0}
+.erow .elabel{flex:0 0 86px;font-size:9.5px;color:var(--muted)}
+.erow .evalue{flex:1;font-size:10.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erow .pen{width:19px;height:19px;flex:0 0 19px;border-radius:5px;display:grid;place-items:center;color:var(--muted2);opacity:.45}
+.erow:hover .pen{opacity:1;background:var(--bg)}
+.erow .pen .ic{width:10px;height:10px}
+.erow.editing{background:var(--indigo-soft);margin:3px -7px;padding:6px 7px;border-radius:7px}
+.erow.editing .evalue{display:flex;gap:4px;align-items:center;overflow:visible}
+.erow.editing .input{height:25px;font-size:10.5px}
+.miniok{width:21px;height:21px;flex:0 0 21px;border-radius:5px;display:grid;place-items:center;border:0;cursor:pointer}
+.miniok.yes{background:var(--green);color:#fff}
+.miniok.no{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.miniok .ic{width:10px;height:10px}
+.fiche-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--border-soft);background:var(--bg);border-radius:0 0 11px 11px}
+.fiche-foot span{font-size:9px;color:var(--muted2)}
+.ro { display:flex; align-items:center; gap:6px; }
+
+/* ---------- remaining layout ---------- */
+.grid-a{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:11px;align-items:start}
+.grid-a .col{display:flex;flex-direction:column;min-width:0}
+.grid-d{display:grid;grid-template-columns:minmax(0,312px) minmax(0,1fr);gap:11px;align-items:start}
+.railrow{display:flex;align-items:center;gap:8px;padding:4px 0;min-width:0}
+.railrow .ic{width:11px;height:11px;color:var(--muted2);flex:0 0 11px}
+.railrow span{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.abs-note{position:absolute;top:11px;right:11px;z-index:2;font-size:9px;font-weight:700;color:var(--red);background:var(--red-soft);border:1px dashed var(--red-border);border-radius:999px;padding:2px 7px}
+.acc{display:flex;align-items:center;gap:9px;padding:11px 13px}
+.acc > .ic{width:13px;height:13px;color:var(--muted2)}
+.acc .t{font-size:11.5px;font-weight:650}
+
+.notes{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:11px}
+.note{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 11px;box-shadow:var(--shadow)}
+.note b{display:grid;place-items:center;width:17px;height:17px;border-radius:5px;background:var(--indigo-soft);color:var(--indigo-text);font-size:9px;font-weight:750;margin-bottom:6px}
+.note p{margin:0;font-size:10.5px;line-height:1.6;color:var(--muted)}
+.note strong{color:var(--text);font-weight:650}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--border-soft);border-radius:4px;padding:0 3px;font-size:.93em}
+
+.cmp{margin-top:48px;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.cmp-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:18px 20px 14px;flex-wrap:wrap}
+.cmp-h h2{font-size:18px;letter-spacing:-.025em;margin:7px 0 0}
+.cmp-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:720px}
+th,td{padding:9px 14px;text-align:left;border-top:1px solid var(--border-soft);vertical-align:top;line-height:1.5}
+thead th{background:var(--bg);font-size:9px;font-weight:750;letter-spacing:.09em;text-transform:uppercase;color:var(--muted2);border-top:0}
+td:first-child{color:var(--muted);font-weight:600;white-space:nowrap}
+.best-col{background:color-mix(in srgb,var(--indigo-soft) 60%,transparent);color:var(--indigo-text);font-weight:600}
+thead .best-col{font-weight:750}
+tbody tr:last-child td{border-bottom:0}
+
+.reco{margin-top:22px;display:flex;gap:14px;padding:16px 18px;border-radius:14px;background:linear-gradient(130deg,var(--indigo-soft),transparent 75%);border:1px solid var(--indigo-border)}
+.reco-ico{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;box-shadow:0 8px 18px -10px rgba(99,102,241,1)}
+.reco-ico .ic{width:16px;height:16px}
+.reco h3{margin:0 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo-text);font-weight:750}
+.reco p{margin:0;font-size:12px;line-height:1.7;color:var(--muted)}
+.reco b{color:var(--text)}
+.footnote{margin-top:18px;font-size:10px;color:var(--muted2);text-align:center;line-height:1.6}
+
+@media (max-width:1100px){
+  .diag{grid-template-columns:repeat(2,1fr)}
+  .notes{grid-template-columns:repeat(2,1fr)}
+  .side{width:52px;flex:0 0 52px;padding:8px 5px;align-items:center}
+  .brand{justify-content:center;padding:1px 0 10px;width:100%}
+  .brand b{display:none}
+  .nav{width:100%;align-items:center}
+  .nav a{justify-content:center;width:38px;padding:0;gap:0}
+  .nav a span{display:none}
+  .nav a .ic{width:14px;height:14px}
+  .side-foot{width:100%;align-items:center}
+  .side-foot a{justify-content:center;width:38px;padding:0}
+  .side-foot a span{display:none}
+  .grid-b{grid-template-columns:minmax(0,264px) minmax(0,1fr)}
+  .grid-c{grid-template-columns:minmax(0,230px) minmax(0,1fr)}
+  .grid-d{grid-template-columns:minmax(0,284px) minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .grid-a,.grid-b,.grid-c,.grid-d{grid-template-columns:minmax(0,1fr)}
+  .bento .card{grid-column:span 12}
+  .hero-top{flex-wrap:wrap}
+  .hero-actions{margin-left:0}
+  .hero-meta{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  .wrap{padding:20px 13px 70px}
+  .diag,.notes{grid-template-columns:1fr}
+  .main{padding:14px}
+  .brandmark span.sub,.toolbtn span{display:none}
+  .topbar{gap:8px;padding:0 12px}
+  .strat-head .chips{margin-left:0}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brandmark"><span class="logo">A</span>Alanya Admin <span class="sub">· idées</span></div>
+  <nav class="seg" aria-label="Choisir une maquette">
+    <button type="button" data-view="0" aria-selected="false">Avant</button>
+    <button type="button" data-view="A" aria-selected="false">A · Bento</button>
+    <button type="button" data-view="B" aria-selected="false">B · Rail + onglets</button>
+    <button type="button" data-view="C" aria-selected="false">C · Fiche</button>
+    <button type="button" data-view="D" aria-selected="false">D · Chirurgical</button>
+    <button type="button" data-view="all" aria-selected="true">Toutes</button>
+  </nav>
+  <button type="button" class="toolbtn" id="themeBtn"><i data-icon="moon"></i><span>Sombre</span></button>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <div class="eyebrow">Refonte · Admin → Mon profil</div>
+    <h1>Quatre façons de rééquilibrer la page profil</h1>
+    <p class="lead">
+      Aujourd'hui : une carte d'identité seule dans une colonne de <b>1/3</b>, et trois cartes empilées dans les
+      <b>2/3</b> restants — dont deux qui répètent le nom, le pseudo et l'email. Voici quatre agencements,
+      du plus ambitieux au plus chirurgical. Les maquettes reprennent la barre latérale et les proportions
+      réelles du panneau ; le sélecteur en haut permet d'isoler une piste, et le mode sombre est fonctionnel.
+    </p>
+    <div class="diag">
+      <article>
+        <span class="dnum">Colonne gauche</span>
+        <h3>≈ 60 % de vide</h3>
+        <p>La carte fait ~230 px de haut pour une colonne d'environ 1 000 px. Le reste n'est que du fond.</p>
+      </article>
+      <article>
+        <span class="dnum">Colonne droite</span>
+        <h3>≈ 1 200 px de haut</h3>
+        <p>Informations (8 lignes) + Modifier + Mot de passe s'empilent : un écran et demi de scroll pour des réglages.</p>
+      </article>
+      <article>
+        <span class="dnum">Doublon</span>
+        <h3>Nom · pseudo · email ×2</h3>
+        <p><code>ProfileInfo</code> et <code>ProfileEditForm</code> affichent les mêmes trois champs : on ne sait plus où l'on édite.</p>
+      </article>
+      <article>
+        <span class="dnum">Donnée dormante</span>
+        <h3><code>permissions[]</code> ignoré</h3>
+        <p>Une soixantaine de permissions sont renvoyées par <code>/admin/me</code> et jamais affichées : c'est le contenu naturel de la gauche.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ AVANT ============ -->
+  <section class="strategy" data-strategy="0">
+    <div class="strat-head">
+      <div class="letter">0</div>
+      <div>
+        <h2>État actuel — pour mémoire</h2>
+        <p>Deux colonnes 1/3 – 2/3. À gauche une carte, à droite tout le reste. Les zones rouges marquent les problèmes mesurés.</p>
+      </div>
+      <div class="chips"><span class="chip">Référence</span><span class="chip">Aucun changement</span></div>
+    </div>
+    <div class="app" data-app data-fade>
+      <template>
+        <div class="phead">
+          <button class="btn ghost square" aria-label="Retour"><i data-icon="arrow-left"></i></button>
+          <div class="txt">
+            <h3 class="ptitle"><i data-icon="user-circle"></i>Mon profil</h3>
+            <p class="psub">Gérez vos informations personnelles</p>
+          </div>
+        </div>
+        <div class="grid-a">
+          <div class="col">
+            <div class="card">
+              <div class="card-b center">
+                <div style="display:flex;justify-content:center"><div class="avatar lg">NB</div></div>
+                <div class="id-name">Nadia Belkacem</div>
+                <div class="id-pseudo">@n.belkacem</div>
+                <div style="margin-top:8px"><span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></div>
+                <div class="id-mail">nadia.belkacem@alanya.app</div>
+              </div>
+            </div>
+            <div class="void" style="height:290px">≈ 60 % de la colonne vide</div>
+          </div>
+          <div class="col" style="position:relative">
+            <span class="abs-note">3 cartes empilées · ≈ 1 200 px</span>
+            <div class="card">
+              <div class="card-h"><div class="t">Informations personnelles</div></div>
+              <div class="card-b">
+                <div class="frow"><span class="fic"><i data-icon="user"></i></span><span class="flabel">Nom</span><span class="fval">Nadia Belkacem</span></div>
+                <div class="frow"><span class="fic"><i data-icon="user"></i></span><span class="flabel">Pseudo</span><span class="fval">@n.belkacem</span></div>
+                <div class="frow"><span class="fic"><i data-icon="mail"></i></span><span class="flabel">Email</span><span class="fval">nadia.belkacem@alanya.app</span></div>
+                <div class="frow"><span class="fic"><i data-icon="phone"></i></span><span class="flabel">Téléphone</span><span class="fval">+33 6 12 34 56 78</span></div>
+                <div class="frow"><span class="fic"><i data-icon="shield"></i></span><span class="flabel">Rôle</span><span class="fval">Super-Admin</span></div>
+                <div class="frow"><span class="fic"><i data-icon="map-pin"></i></span><span class="flabel">Pays</span><span class="fval">France</span></div>
+                <div class="frow"><span class="fic"><i data-icon="calendar"></i></span><span class="flabel">Inscrit le</span><span class="fval">12 mars 2024</span></div>
+                <div class="frow"><span class="fic"><i data-icon="clock"></i></span><span class="flabel">Dernière connexion</span><span class="fval">Aujourd'hui, 09:42</span></div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:10px">
+              <div class="card-h">
+                <div class="t">Modifier le profil</div>
+                <button class="btn sm"><i data-icon="pencil"></i>Modifier</button>
+              </div>
+              <div class="card-b">
+                <div class="hint" style="margin:0 0 8px"><i data-icon="camera"></i> Changer la photo de profil</div>
+                <div class="frow"><span class="flabel">Nom</span><span class="fval">Nadia Belkacem</span></div>
+                <div class="frow"><span class="flabel">Pseudo</span><span class="fval">@n.belkacem</span></div>
+                <div class="frow"><span class="flabel">Email</span><span class="fval">nadia.belkacem@alanya.app</span></div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:10px">
+              <div class="card-h"><div class="t"><i data-icon="lock" style="color:var(--indigo)"></i>Changer le mot de passe</div></div>
+              <div class="card-b">
+                <div class="field"><span class="lbl">Mot de passe actuel</span><div class="inp ph">••••••••</div></div>
+                <div class="field"><span class="lbl">Nouveau mot de passe</span><div class="inp ph">••••••••</div></div>
+                <div class="field"><span class="lbl">Confirmer le mot de passe</span><div class="inp ph">••••••••</div></div>
+                <button class="btn primary"><i data-icon="lock"></i>Modifier le mot de passe</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="notes">
+      <div class="note"><b>01</b><p><strong>La gauche ne porte qu'une carte.</strong> Le bloc d'identité finit à ~230 px, la colonne mesure ~1 000 px : le vide est structurel, pas un accident de contenu.</p></div>
+      <div class="note"><b>02</b><p><strong>La droite cumule trois cartes</strong> et dépasse la hauteur d'un écran. Le formulaire de mot de passe, toujours ouvert, y contribue pour ~300 px.</p></div>
+      <div class="note"><b>03</b><p><strong>Le nom, le pseudo et l'email apparaissent deux fois.</strong> La première fois en lecture, la seconde en édition : le regard doit choisir.</p></div>
+      <div class="note"><b>04</b><p><strong>Les permissions sont absentes.</strong> <code>permissions[]</code> est déjà dans le profil renvoyé par l'API ; aucune route à créer.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ A ============ -->
+  <section class="strategy" data-strategy="A">
+    <div class="strat-head">
+      <div class="letter">A</div>
+      <div>
+        <h2>Bento identité</h2>
+        <p>Le bandeau remplace l'en-tête et les colonnes : l'identité occupe toute la largeur, le reste se répartit en cinq cartes de tailles différentes.</p>
+      </div>
+      <div class="chips"><span class="chip">Plus de colonnes</span><span class="chip">Impact visuel</span><span class="chip eff">Effort ~2–3 h</span></div>
+    </div>
+    <div class="app" data-app>
+      <template>
+        <div class="hero">
+          <div class="hero-top">
+            <div class="avatar lg">NB</div>
+            <div class="hero-id">
+              <h3 class="hero-name">Nadia Belkacem <span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></h3>
+              <div class="hero-sub">
+                <span>@n.belkacem</span><span class="dotsep"></span><span>nadia.belkacem@alanya.app</span>
+                <span class="dotsep"></span><span class="badge ok"><span class="pulse"></span>Compte actif</span>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <button class="btn"><i data-icon="camera"></i>Changer la photo</button>
+              <button class="btn primary"><i data-icon="pencil"></i>Modifier</button>
+            </div>
+          </div>
+          <div class="hero-meta">
+            <div><span class="mlabel">Identifiant</span><span class="mval"><i data-icon="hash"></i>#1042</span></div>
+            <div><span class="mlabel">Pays</span><span class="mval"><i data-icon="map-pin"></i>France</span></div>
+            <div><span class="mlabel">Membre depuis</span><span class="mval"><i data-icon="calendar"></i>12 mars 2024</span></div>
+            <div><span class="mlabel">Dernière connexion</span><span class="mval"><i data-icon="clock"></i>Aujourd'hui, 09:42</span></div>
+          </div>
+        </div>
+
+        <div class="bento">
+          <div class="card s5">
+            <div class="card-h">
+              <div class="t"><i data-icon="user"></i>Coordonnées</div>
+              <button class="btn ghost sm"><i data-icon="pencil"></i>Modifier</button>
+            </div>
+            <div class="card-b">
+              <div class="frow"><span class="flabel">Nom complet</span><span class="fval">Nadia Belkacem</span><span class="pen"><i data-icon="pencil"></i></span></div>
+              <div class="frow"><span class="flabel">Pseudo</span><span class="fval">@n.belkacem</span><span class="pen"><i data-icon="pencil"></i></span></div>
+              <div class="frow"><span class="flabel">Email</span><span class="fval">nadia.belkacem@alanya.app</span><span class="pen"><i data-icon="pencil"></i></span></div>
+              <div class="frow"><span class="flabel">Téléphone</span><span class="fval">+33 6 12 34 56 78</span><span class="pen"><i data-icon="pencil"></i></span></div>
+              <div class="frow"><span class="flabel">Pays</span><span class="fval">France</span><span class="pen show"><i data-icon="pencil"></i></span></div>
+              <div class="hint"><i data-icon="pencil"></i> Chaque ligne s'édite sur place — plus de carte « lecture » puis « formulaire ».</div>
+            </div>
+          </div>
+
+          <div class="card s4">
+            <div class="card-h">
+              <div class="t"><i data-icon="key"></i>Ce que vous pouvez faire</div>
+              <span class="badge neutral">62</span>
+            </div>
+            <div class="card-b">
+              <div class="pgroups">
+                <div class="pgroup">
+                  <span class="pic"><i data-icon="users"></i></span>
+                  <div class="pbody">
+                    <div class="pt"><span>Comptes</span><em>15 droits</em></div>
+                    <div class="ps">Voir, créer et encadrer les comptes, y compris le vôtre.</div>
+                  </div>
+                </div>
+                <div class="pgroup">
+                  <span class="pic"><i data-icon="flag"></i></span>
+                  <div class="pbody">
+                    <div class="pt"><span>Modération</span><em>7 droits</em></div>
+                    <div class="ps">Traiter les signalements et retirer les contenus problématiques.</div>
+                  </div>
+                </div>
+                <div class="pgroup">
+                  <span class="pic"><i data-icon="sparkles"></i></span>
+                  <div class="pbody">
+                    <div class="pt"><span>Contenus &amp; diffusion</span><em>17 droits</em></div>
+                    <div class="ps">Consulter les contenus et préparer les messages officiels.</div>
+                  </div>
+                </div>
+                <div class="pgroup">
+                  <span class="pic"><i data-icon="dashboard"></i></span>
+                  <div class="pbody">
+                    <div class="pt"><span>Pilotage</span><em>9 droits</em></div>
+                    <div class="ps">Suivre l'activité, exporter des données et gérer l'abonnement.</div>
+                  </div>
+                </div>
+                <div class="pgroup">
+                  <span class="pic"><i data-icon="settings"></i></span>
+                  <div class="pbody">
+                    <div class="pt"><span>Système &amp; sécurité</span><em>14 droits</em></div>
+                    <div class="ps">Réglages sensibles, sauvegardes et purges de données.</div>
+                  </div>
+                </div>
+              </div>
+              <div class="flexfill"></div>
+              <button class="btn sm" style="width:100%;justify-content:space-between;margin-top:10px">Voir le détail des 62 droits <i data-icon="chevron-right"></i></button>
+              <div class="hint"><i data-icon="key"></i> Chaque droit est écrit en français clair ; le code technique reste dans le détail.</div>
+            </div>
+          </div>
+
+          <div class="card s3">
+            <div class="card-h"><div class="t"><i data-icon="info"></i>Compte</div></div>
+            <div class="card-b">
+              <div class="frow stacked"><span class="flabel">Rôle</span><span class="fval">Super-Admin</span></div>
+              <div class="frow stacked"><span class="flabel">Identifiant</span><span class="fval">#1042</span></div>
+              <div class="frow stacked"><span class="flabel">Inscrit le</span><span class="fval">12 mars 2024</span></div>
+              <div class="frow stacked"><span class="flabel">Dernière connexion</span><span class="fval">Aujourd'hui, 09:42</span></div>
+              <div class="flexfill"></div>
+              <div class="hint"><i data-icon="lock"></i> Non modifiable.</div>
+            </div>
+          </div>
+
+          <div class="card s7">
+            <div class="card-h"><div class="t"><i data-icon="camera"></i>Photo &amp; apparence</div></div>
+            <div class="card-b">
+              <div class="photo-row">
+                <div class="avatar lg">NB</div>
+                <div style="flex:1;min-width:0">
+                  <div class="dropzone">
+                    <i data-icon="camera"></i>
+                    <b>Glissez une image ou cliquez pour parcourir</b>
+                    <span>JPG, PNG ou WebP · 5 Mo maximum</span>
+                  </div>
+                  <div style="display:flex;gap:6px;margin-top:8px">
+                    <button class="btn sm primary"><i data-icon="camera"></i>Choisir un fichier</button>
+                    <button class="btn sm">Supprimer la photo</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card s5">
+            <div class="card-h"><div class="t"><i data-icon="shield"></i>Sécurité</div></div>
+            <div class="card-b">
+              <div class="frow">
+                <span class="fic"><i data-icon="lock"></i></span>
+                <span class="flabel">Mot de passe</span>
+                <span class="fval" style="color:var(--muted);font-weight:500">••••••••</span>
+                <button class="btn sm" style="margin-left:8px"><i data-icon="key"></i>Changer</button>
+              </div>
+              <div class="flexfill"></div>
+              <div class="note-box amber"><i data-icon="info"></i><span>Toute modification du mot de passe notifie les super-admins.</span></div>
+              <div class="hint" style="margin-top:7px">Le formulaire s'ouvre dans une boîte de dialogue : la page garde sa hauteur.</div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="notes">
+      <div class="note"><b>01</b><p><strong>Un seul bloc d'identité, pleine largeur.</strong> Avatar, nom, rôle et quatre métadonnées : plus de carte isolée à gauche du vide.</p></div>
+      <div class="note"><b>02</b><p><strong>Grille 12 colonnes, deux rangées.</strong> 5 + 4 + 3 en haut, 7 + 5 en bas : les cartes s'étirent à la même hauteur, la page se lit en un écran.</p></div>
+      <div class="note"><b>03</b><p><strong>Les permissions remplacent le vide.</strong> Cinq groupes écrits en français simple, avec compteur ; le détail s'ouvre dans une fenêtre, code technique en second plan.</p></div>
+      <div class="note"><b>04</b><p><strong>Le mot de passe sort du flux.</strong> Trois champs gagnent une boîte de dialogue : ~300 px de page en moins.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section class="strategy" data-strategy="B">
+    <div class="strat-head">
+      <div class="letter">B</div>
+      <div>
+        <h2>Rail d'identité + onglets</h2>
+        <p>On garde deux colonnes, mais la gauche devient un rail complet et stable ; la droite n'affiche qu'un panneau à la fois.</p>
+      </div>
+      <div class="chips"><span class="chip">Aucun scroll</span><span class="chip">Lecture / édition séparées</span><span class="chip eff">Effort ~1–2 h</span></div>
+    </div>
+    <div class="app" data-app>
+      <template>
+        <div class="phead">
+          <button class="btn ghost square" aria-label="Retour"><i data-icon="arrow-left"></i></button>
+          <div class="txt">
+            <h3 class="ptitle"><i data-icon="user-circle"></i>Mon profil</h3>
+            <p class="psub">Vos informations et votre sécurité, au même endroit</p>
+          </div>
+        </div>
+        <div class="grid-b">
+          <div class="card railcard">
+            <div class="card-b center" style="padding-top:16px">
+              <div style="display:flex;justify-content:center"><div class="avatar lg">NB</div></div>
+              <div class="id-name">Nadia Belkacem</div>
+              <div class="id-pseudo">@n.belkacem</div>
+              <div style="margin-top:7px"><span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></div>
+              <div class="rule"></div>
+              <div style="text-align:left">
+                <div class="railrow"><i data-icon="mail"></i><span>nadia.belkacem@alanya.app</span></div>
+                <div class="railrow"><i data-icon="phone"></i><span>+33 6 12 34 56 78</span></div>
+                <div class="railrow"><i data-icon="map-pin"></i><span>France</span></div>
+                <div class="railrow"><i data-icon="hash"></i><span>Identifiant #1042</span></div>
+              </div>
+              <div class="ministats">
+                <div><span>Inscrit le</span><b>12 mars 2024</b></div>
+                <div><span>Dernière connexion</span><b>09:42 aujourd'hui</b></div>
+              </div>
+              <button class="btn block"><i data-icon="camera"></i>Changer la photo</button>
+            </div>
+          </div>
+
+          <div class="card" data-tabscope>
+            <div class="tabs" data-tabs>
+              <button class="tab on" data-tab="info"><i data-icon="user"></i>Informations</button>
+              <button class="tab" data-tab="edit"><i data-icon="pencil"></i>Modifier</button>
+              <button class="tab" data-tab="pwd"><i data-icon="key"></i>Mot de passe</button>
+            </div>
+
+            <div class="pane" data-pane="info">
+              <div class="pane-h">
+                <div>
+                  <h4>Informations personnelles</h4>
+                  <p>Ce que les autres administrateurs voient de vous.</p>
+                </div>
+                <span class="badge neutral">Compte vérifié</span>
+              </div>
+              <div class="kv-grid">
+                <div class="kv"><span>Nom complet</span><b>Nadia Belkacem</b></div>
+                <div class="kv"><span>Pseudo</span><b>@n.belkacem</b></div>
+                <div class="kv"><span>Email</span><b>nadia.belkacem@alanya.app</b></div>
+                <div class="kv"><span>Téléphone</span><b>+33 6 12 34 56 78</b></div>
+                <div class="kv"><span>Pays</span><b>France</b></div>
+                <div class="kv"><span>Rôle</span><b>Super-Admin</b></div>
+              </div>
+              <div class="ministats" style="grid-template-columns:repeat(3,1fr);margin:13px 0 0">
+                <div><span>Identifiant</span><b>#1042</b></div>
+                <div><span>Inscrit le</span><b>12 mars 2024</b></div>
+                <div><span>Dernière connexion</span><b>Aujourd'hui, 09:42</b></div>
+              </div>
+              <div class="note-box" style="margin-top:12px"><i data-icon="pencil"></i><span>Pour corriger une information, ouvrez l'onglet <strong>Modifier</strong>. Rien ne se perd en changeant d'onglet.</span></div>
+            </div>
+
+            <div class="pane" data-pane="edit" hidden>
+              <div class="pane-h">
+                <div>
+                  <h4>Modifier le profil</h4>
+                  <p>Nom, pseudo et email — le reste est en lecture seule.</p>
+                </div>
+              </div>
+              <div class="grid2" style="margin-bottom:9px">
+                <div><span class="lbl">Nom</span><input class="input" value="Nadia Belkacem"></div>
+                <div><span class="lbl">Pseudo</span><input class="input" value="n.belkacem"></div>
+              </div>
+              <div><span class="lbl">Email</span><input class="input" value="nadia.belkacem@alanya.app"></div>
+              <div class="note-box" style="margin-top:12px"><i data-icon="camera"></i><span>La photo se change depuis le rail de gauche, à tout moment.</span></div>
+              <div class="formfoot">
+                <button class="btn">Annuler</button>
+                <button class="btn primary"><i data-icon="save"></i>Enregistrer</button>
+              </div>
+            </div>
+
+            <div class="pane" data-pane="pwd" hidden>
+              <div class="pane-h">
+                <div>
+                  <h4>Changer le mot de passe</h4>
+                  <p>Les super-admins sont notifiés à chaque changement.</p>
+                </div>
+                <span class="badge ok"><span class="pulse"></span>Session sécurisée</span>
+              </div>
+              <div class="field"><span class="lbl">Mot de passe actuel</span><div class="inp ph">••••••••</div></div>
+              <div class="grid2">
+                <div><span class="lbl">Nouveau mot de passe</span><div class="inp ph">••••••••</div></div>
+                <div><span class="lbl">Confirmation</span><div class="inp ph">••••••••</div></div>
+              </div>
+              <div class="hint"><i data-icon="info"></i> 6 caractères minimum.</div>
+              <div class="formfoot">
+                <button class="btn"><i data-icon="x"></i>Annuler</button>
+                <button class="btn primary"><i data-icon="lock"></i>Mettre à jour</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="notes">
+      <div class="note"><b>01</b><p><strong>Le rail tient debout seul.</strong> Avatar, contact, identifiant et deux dates : ~420 px de contenu utile qui remplacent le vide.</p></div>
+      <div class="note"><b>02</b><p><strong>Un panneau à la fois.</strong> Informations, Modifier, Mot de passe : la page ne dépasse plus un écran, quelle que soit l'action.</p></div>
+      <div class="note"><b>03</b><p><strong>La sécurité devient un onglet.</strong> Le formulaire de trois champs ne pèse plus sur la page tant qu'on n'en a pas besoin.</p></div>
+      <div class="note"><b>04</b><p><strong>Rail ≈ 370 px, panneau ≈ 310 px.</strong> La colonne gauche porte enfin du contenu utile, sans tirer la page vers le bas.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section class="strategy" data-strategy="C">
+    <div class="strat-head">
+      <div class="letter">C</div>
+      <div>
+        <h2>Fiche éditable sur place</h2>
+        <p>Une seule fiche, une seule colonne de contenu : chaque champ s'édite là où il s'affiche. À gauche, un résumé compact et la sécurité.</p>
+      </div>
+      <div class="chips"><span class="chip">Le moins de clics</span><span class="chip">Zéro duplication</span><span class="chip eff">Effort ~3–4 h</span></div>
+    </div>
+    <div class="app" data-app>
+      <template>
+        <div class="phead">
+          <button class="btn ghost square" aria-label="Retour"><i data-icon="arrow-left"></i></button>
+          <div class="txt">
+            <h3 class="ptitle"><i data-icon="user-circle"></i>Mon profil</h3>
+            <p class="psub">Fiche administrateur · mise à jour en direct</p>
+          </div>
+          <div class="actions">
+            <button class="btn"><i data-icon="key"></i>Mes permissions</button>
+            <button class="btn primary"><i data-icon="pencil"></i>Tout modifier</button>
+          </div>
+        </div>
+
+        <div class="grid-c">
+          <div class="rail-stack">
+            <div class="card">
+              <div class="card-b center" style="padding-top:15px">
+                <div style="display:flex;justify-content:center"><div class="avatar md">NB</div></div>
+                <div class="id-name">Nadia Belkacem</div>
+                <div class="id-pseudo">@n.belkacem</div>
+                <div style="margin-top:7px"><span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><div class="t"><i data-icon="info"></i>Résumé</div></div>
+              <div class="card-b">
+                <div class="frow"><span class="flabel">Identifiant</span><span class="fval">#1042</span></div>
+                <div class="frow"><span class="flabel">Pays</span><span class="fval">France</span></div>
+                <div class="frow"><span class="flabel">Inscrit le</span><span class="fval">12 mars 2024</span></div>
+                <div class="frow"><span class="flabel">Dernière connexion</span><span class="fval">09:42</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><div class="t"><i data-icon="shield"></i>Sécurité</div></div>
+              <div class="card-b">
+                <div class="frow">
+                  <span class="fic"><i data-icon="lock"></i></span>
+                  <span class="flabel">Mot de passe</span>
+                  <span class="fval" style="color:var(--muted);font-weight:500">••••••••</span>
+                </div>
+                <button class="btn block" style="margin-top:9px"><i data-icon="key"></i>Changer</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h">
+              <div class="t"><i data-icon="user"></i>Fiche administrateur</div>
+              <span class="badge ok"><span class="pulse"></span>Enregistré</span>
+            </div>
+
+            <div class="sect">
+              <div class="sect-h">Identité</div>
+              <div class="erow editing">
+                <span class="elabel">Nom complet</span>
+                <span class="evalue">
+                  <input class="input" value="Nadia Belkacem" style="flex:1">
+                  <button class="miniok yes" aria-label="Valider"><i data-icon="check"></i></button>
+                  <button class="miniok no" aria-label="Annuler"><i data-icon="x"></i></button>
+                </span>
+              </div>
+              <div class="erow">
+                <span class="elabel">Pseudo</span>
+                <span class="evalue">@n.belkacem</span>
+                <span class="pen"><i data-icon="pencil"></i></span>
+              </div>
+              <div class="erow">
+                <span class="elabel">Photo</span>
+                <span class="evalue" style="display:flex;align-items:center;gap:6px">
+                  <span class="avatar sm" style="width:22px;height:22px;font-size:8px">NB</span>
+                  <span style="font-weight:500;color:var(--muted)">Avatar actuel</span>
+                </span>
+                <span class="pen"><i data-icon="pencil"></i></span>
+              </div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-h">Coordonnées</div>
+              <div class="erow">
+                <span class="elabel">Email</span>
+                <span class="evalue">nadia.belkacem@alanya.app</span>
+                <span class="pen"><i data-icon="pencil"></i></span>
+              </div>
+              <div class="erow">
+                <span class="elabel">Téléphone</span>
+                <span class="evalue">+33 6 12 34 56 78</span>
+                <span class="pen"><i data-icon="pencil"></i></span>
+              </div>
+              <div class="erow">
+                <span class="elabel">Pays</span>
+                <span class="evalue">France</span>
+                <span class="pen"><i data-icon="pencil"></i></span>
+              </div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-h">Accès</div>
+              <div class="erow">
+                <span class="elabel">Rôle</span>
+                <span class="evalue"><span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></span>
+              </div>
+              <div class="erow" style="align-items:flex-start;padding-bottom:11px">
+                <span class="elabel" style="padding-top:3px">Permissions</span>
+                <span class="evalue" style="white-space:normal;overflow:visible">
+                  <span class="pgrid">
+                    <span class="pchip"><i data-icon="check"></i>stats.read</span>
+                    <span class="pchip"><i data-icon="check"></i>users.read</span>
+                    <span class="pchip"><i data-icon="check"></i>billing.read</span>
+                    <span class="pchip"><i data-icon="check"></i>settings.read</span>
+                    <span class="pchip"><i data-icon="check"></i>audit.read</span>
+                    <span class="pchip"><i data-icon="check"></i>profile.read</span>
+                    <span class="pchip"><i data-icon="check"></i>media.read</span>
+                    <span class="pchip"><i data-icon="check"></i>groups.read</span>
+                    <span class="pchip"><i data-icon="check"></i>broadcasts.read</span>
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="fiche-foot">
+              <span>Dernière mise à jour : aujourd'hui à 09:42</span>
+              <span class="badge neutral"><i data-icon="info"></i>Entrée / Entrée pour valider, Échap pour annuler</span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="notes">
+      <div class="note"><b>01</b><p><strong>Édition sur place.</strong> Un crayon par ligne, Entrée pour valider, Échap pour annuler : l'écran ne bascule plus entre lecture et formulaire.</p></div>
+      <div class="note"><b>02</b><p><strong>Zéro duplication.</strong> <code>ProfileInfo</code> et <code>ProfileEditForm</code> fusionnent en un seul composant <code>ProfileField</code>.</p></div>
+      <div class="note"><b>03</b><p><strong>Le résumé ne bouge pas.</strong> Un rail de 248 px garde l'identification, l'identifiant et les dates sous les yeux pendant l'édition.</p></div>
+      <div class="note"><b>04</b><p><strong>La sécurité reste à part.</strong> Un seul bouton ouvre le changement de mot de passe, hors de la fiche et hors du regard.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ D ============ -->
+  <section class="strategy" data-strategy="D">
+    <div class="strat-head">
+      <div class="letter">D</div>
+      <div>
+        <h2>Rééquilibrage chirurgical</h2>
+        <p>On ne touche qu'à la répartition : des cartes descendent à gauche, la sécurité se replie à droite. Les composants existants restent.</p>
+      </div>
+      <div class="chips"><span class="chip">~30–45 min</span><span class="chip">Aucun composant nouveau</span><span class="chip eff">Risque minimal</span></div>
+    </div>
+    <div class="app" data-app>
+      <template>
+        <div class="phead">
+          <button class="btn ghost square" aria-label="Retour"><i data-icon="arrow-left"></i></button>
+          <div class="txt">
+            <h3 class="ptitle"><i data-icon="user-circle"></i>Mon profil</h3>
+            <p class="psub">Gérez vos informations personnelles</p>
+          </div>
+          <div class="actions">
+            <button class="btn primary"><i data-icon="pencil"></i>Modifier le profil</button>
+          </div>
+        </div>
+
+        <div class="grid-d">
+          <div class="rail-stack">
+            <div class="card">
+              <div class="card-b center" style="padding-top:15px">
+                <div style="display:flex;justify-content:center"><div class="avatar lg">NB</div></div>
+                <div class="id-name">Nadia Belkacem</div>
+                <div class="id-pseudo">@n.belkacem</div>
+                <div style="margin-top:7px"><span class="badge role"><i data-icon="shield-check"></i>Super-Admin</span></div>
+                <div class="id-mail">nadia.belkacem@alanya.app</div>
+                <div class="rule"></div>
+                <div style="text-align:left">
+                  <div class="frow"><span class="flabel">Identifiant</span><span class="fval">#1042</span></div>
+                  <div class="frow"><span class="flabel">Inscrit le</span><span class="fval">12 mars 2024</span></div>
+                  <div class="frow"><span class="flabel">Dernière connexion</span><span class="fval">Aujourd'hui, 09:42</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h">
+                <div class="t"><i data-icon="key"></i>Permissions</div>
+                <span class="badge neutral">9</span>
+              </div>
+              <div class="card-b">
+                <div class="pgrid">
+                  <span class="pchip"><i data-icon="check"></i>stats.read</span>
+                  <span class="pchip"><i data-icon="check"></i>users.read</span>
+                  <span class="pchip"><i data-icon="check"></i>billing.read</span>
+                  <span class="pchip"><i data-icon="check"></i>settings.read</span>
+                  <span class="pchip"><i data-icon="check"></i>audit.read</span>
+                  <span class="pchip"><i data-icon="check"></i>profile.read</span>
+                  <span class="pchip"><i data-icon="check"></i>media.read</span>
+                  <span class="pchip"><i data-icon="check"></i>groups.read</span>
+                  <span class="pchip"><i data-icon="check"></i>broadcasts.read</span>
+                </div>
+                <div class="hint"><i data-icon="info"></i> Déjà renvoyées par <code>/admin/me</code>.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+            <div class="card">
+              <div class="card-h"><div class="t"><i data-icon="phone"></i>Coordonnées</div></div>
+              <div class="card-b">
+                <div class="frow"><span class="fic"><i data-icon="phone"></i></span><span class="flabel">Téléphone</span><span class="fval">+33 6 12 34 56 78</span></div>
+                <div class="frow"><span class="fic"><i data-icon="map-pin"></i></span><span class="flabel">Pays</span><span class="fval">France</span></div>
+                <div class="frow"><span class="fic"><i data-icon="shield"></i></span><span class="flabel">Rôle</span><span class="fval">Super-Admin</span></div>
+                <div class="hint"><i data-icon="scissors"></i> <code>ProfileInfo</code> ne garde que ces trois lignes : plus de doublon avec le formulaire.</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h">
+                <div class="t"><i data-icon="pencil"></i>Modifier le profil</div>
+                <button class="btn sm"><i data-icon="pencil"></i>Modifier</button>
+              </div>
+              <div class="card-b">
+                <div class="frow"><span class="flabel">Nom</span><span class="fval">Nadia Belkacem</span><span class="pen show"><i data-icon="pencil"></i></span></div>
+                <div class="frow"><span class="flabel">Pseudo</span><span class="fval">@n.belkacem</span><span class="pen"><i data-icon="pencil"></i></span></div>
+                <div class="frow"><span class="flabel">Email</span><span class="fval">nadia.belkacem@alanya.app</span><span class="pen"><i data-icon="pencil"></i></span></div>
+                <div class="note-box" style="margin-top:10px"><i data-icon="camera"></i><span>La photo de profil se change depuis la carte d'identité, sans passer par le formulaire.</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="acc">
+                <span class="fic" style="width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:var(--bg);border:1px solid var(--border-soft);color:var(--muted2)"><i data-icon="key"></i></span>
+                <div>
+                  <div class="t" style="font-size:11.5px;font-weight:650">Changer le mot de passe</div>
+                  <div style="font-size:9.5px;color:var(--muted);margin-top:2px">Replié par défaut · 3 champs · les super-admins sont notifiés</div>
+                </div>
+                <span class="badge neutral" style="margin-left:auto">Ouvrir</span>
+                <i data-icon="chevron-right"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="notes">
+      <div class="note"><b>01</b><p><strong>Deux cartes descendent à gauche.</strong> Permissions et métadonnées du compte remplissent la colonne sans rien inventer : tout vient de l'API.</p></div>
+      <div class="note"><b>02</b><p><strong><code>ProfileInfo</code> est allégé.</strong> Nom, pseudo et email partent vers le formulaire : chaque information n'apparaît plus qu'une fois.</p></div>
+      <div class="note"><b>03</b><p><strong>La sécurité se replie.</strong> Un accordéon remplace les trois champs toujours ouverts : ~240 px de gagnés en bas de page.</p></div>
+      <div class="note"><b>04</b><p><strong>Aucune migration.</strong> On réutilise <code>ProfileCard</code>, <code>ProfileInfo</code>, <code>ProfileEditForm</code> et <code>PasswordChangeForm</code>.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARAISON ============ -->
+  <section class="cmp" id="comparaison">
+    <div class="cmp-h">
+      <div>
+        <div class="eyebrow">Décider</div>
+        <h2>Ce que chaque stratégie change vraiment</h2>
+      </div>
+      <span class="chip">Repères comparés</span>
+    </div>
+    <div class="cmp-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Critère</th>
+            <th>A · Bento</th>
+            <th class="best-col">B · Rail + onglets</th>
+            <th>C · Fiche</th>
+            <th>D · Chirurgical</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Répartition</td><td>Bandeau + bento 12 col.</td><td class="best-col">Rail 296 px + panneau</td><td>Rail 248 px + fiche</td><td>1/3 – 2/3 rééquilibré</td></tr>
+          <tr><td>Scroll à 1440 px</td><td>Aucun</td><td class="best-col">Aucun</td><td>Léger (~1 écran)</td><td>~0,7 écran</td></tr>
+          <tr><td>Doublon nom / pseudo / email</td><td>Supprimé</td><td class="best-col">Supprimé</td><td>Supprimé</td><td>Partiel</td></tr>
+          <tr><td><code>permissions[]</code> affiché</td><td>Oui</td><td class="best-col">Oui (si ajouté au rail)</td><td>Oui</td><td>Oui</td></tr>
+          <tr><td>Clics pour changer le mot de passe</td><td>1 (dialogue)</td><td class="best-col">1 (onglet)</td><td>1 (dialogue)</td><td>1 (accordéon)</td></tr>
+          <tr><td>Composants à créer</td><td>Hero, grille bento, dialogue</td><td class="best-col">Tabs, rail</td><td>ProfileField</td><td>Aucun</td></tr>
+          <tr><td>Effort / risque</td><td>2–3 h · moyen</td><td class="best-col">1–2 h · faible</td><td>3–4 h · moyen</td><td>30–45 min · très faible</td></tr>
+          <tr><td>Extensible (2FA, sessions…)</td><td>★★★★</td><td class="best-col">★★★★</td><td>★★★★</td><td>★★★</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="reco">
+    <div class="reco-ico"><i data-icon="sparkles"></i></div>
+    <div>
+      <h3>Recommandation</h3>
+      <p>
+        <b>B · Rail d'identité + onglets</b> offre le meilleur rapport UX / effort : la colonne gauche devient utile et stable,
+        la droite cesse de s'allonger, et la lecture reste séparée de l'édition. Si le critère est l'effet visuel à l'ouverture,
+        <b>A</b> est plus spectaculaire. S'il faut livrer aujourd'hui sans risque, <b>D</b> corrige 80 % du problème en moins d'une heure.
+      </p>
+    </div>
+  </div>
+
+  <p class="footnote">
+    Maquettes statiques à but de décision — aucune n'est branchée sur l'API. Le mode sombre et les onglets de la stratégie B sont fonctionnels.
+    Fichier : <code>alanya-admin/ideas/maquettes-profil-admin.html</code>
+  </p>
+</main>
+
+<script>
+const ICONS = {
+  "dashboard":'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  "users":'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  "card":'<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  "flag":'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  "image":'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  "settings":'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  "user-circle":'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66"/>',
+  "logout":'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  "chevron-left":'<polyline points="15 18 9 12 15 6"/>',
+  "chevron-right":'<polyline points="9 18 15 12 9 6"/>',
+  "arrow-left":'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  "pencil":'<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  "shield":'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  "shield-check":'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  "mail":'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  "phone":'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  "map-pin":'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  "calendar":'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  "clock":'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  "lock":'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  "key":'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  "check":'<polyline points="20 6 9 17 4 12"/>',
+  "camera":'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',
+  "save":'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  "x":'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  "hash":'<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>',
+  "user":'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  "sun":'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  "moon":'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  "info":'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  "sparkles":'<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
+  "scissors":'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>'
+};
+
+function paintIcons(root){
+  (root || document).querySelectorAll("[data-icon]").forEach((el) => {
+    const name = el.getAttribute("data-icon");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "ic" + (el.className ? " " + el.className : ""));
+    svg.innerHTML = ICONS[name] || "";
+    el.replaceWith(svg);
+  });
+}
+
+/* Sidebar + chrome are identical across the five mockups. */
+const NAV = [
+  ["dashboard", "Dashboard"], ["users", "Utilisateurs"], ["card", "Abonnements"],
+  ["flag", "Signalements"], ["image", "Médias"], ["settings", "Paramètres"],
+  ["user-circle", "Mon profil"]
+];
+
+document.querySelectorAll("[data-app]").forEach((app) => {
+  const tpl = app.querySelector("template");
+  const main = document.createElement("div");
+  main.className = "main" + (app.hasAttribute("data-fade") ? " fade" : "");
+  if (tpl) main.innerHTML = tpl.innerHTML;
+  else main.innerHTML = "";
+  tpl && tpl.remove();
+
+  const shell = document.createElement("div");
+  shell.innerHTML = `
+    <div class="chrome">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="url"><i data-icon="lock"></i>alanya.app/admin/profile</div>
+    </div>
+    <div class="shell">
+      <aside class="side">
+        <div class="brand"><span class="logo">A</span><b>Alanya Admin</b></div>
+        <nav class="nav">
+          ${NAV.map(([icon, label], i) => `<a href="#" class="${i === NAV.length - 1 ? "on" : ""}" title="${label}"><i data-icon="${icon}"></i><span>${label}</span></a>`).join("")}
+        </nav>
+        <div class="side-foot">
+          <a href="#" style="color:var(--red)" title="Déconnexion"><i data-icon="logout"></i><span>Déconnexion</span></a>
+        </div>
+      </aside>
+      <div class="body">
+        <header class="head">
+          <div class="hleft"><i data-icon="chevron-left"></i><span style="font-size:10px">Menu</span></div>
+          <div class="hright"><button class="iconbtn"><i data-icon="sun"></i></button><span class="headavatar">NB</span></div>
+        </header>
+      </div>
+    </div>`;
+  app.innerHTML = "";
+  while (shell.firstElementChild) app.appendChild(shell.firstElementChild);
+  const shellEl = app.querySelector(".shell");
+  app.querySelector(".body").appendChild(main);
+  app.querySelectorAll(".nav a").forEach((a) => a.addEventListener("click", (e) => e.preventDefault()));
+});
+
+paintIcons();
+
+/* Tabs (strategy B) */
+document.querySelectorAll("[data-tabscope]").forEach((scope) => {
+  const tabs = [...scope.querySelectorAll("[data-tab]")];
+  tabs.forEach((tab) => tab.addEventListener("click", () => {
+    tabs.forEach((t) => t.classList.toggle("on", t === tab));
+    scope.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab.dataset.tab; });
+  }));
+});
+
+/* Strategy selector */
+const viewButtons = [...document.querySelectorAll("[data-view]")];
+function setView(view) {
+  document.querySelectorAll(".strategy").forEach((s) => {
+    s.style.display = (view === "all" || s.dataset.strategy === view) ? "" : "none";
+  });
+  viewButtons.forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+viewButtons.forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+setView("all");
+
+/* Theme */
+const themeBtn = document.getElementById("themeBtn");
+function syncTheme() {
+  const dark = document.documentElement.classList.contains("dark");
+  themeBtn.innerHTML = dark ? '<i data-icon="sun"></i><span>Clair</span>' : '<i data-icon="moon"></i><span>Sombre</span>';
+  paintIcons(themeBtn);
+}
+themeBtn.addEventListener("click", () => {
+  document.documentElement.classList.toggle("dark");
+  try { localStorage.setItem("alanya-mockup-theme", document.documentElement.classList.contains("dark") ? "dark" : "light"); } catch (e) {}
+  syncTheme();
+});
+try {
+  const saved = localStorage.getItem("alanya-mockup-theme");
+  if (saved === "dark") document.documentElement.classList.add("dark");
+} catch (e) {}
+syncTheme();
+</script>
+</body>
+</html>
