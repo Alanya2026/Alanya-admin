@@ -45,9 +45,9 @@ interface ProfileHeroProps {
 /**
  * Bandeau d'identité pleine largeur.
  *
- * Remplace l'ancienne carte isolée dans une colonne étroite : le nom, le rôle
- * et les métadonnées tiennent sur une seule ligne de lecture, avec les actions
- * là où le regard arrive en premier.
+ * Direction A : les quatre informations deviennent une simple ligne de faits
+ * séparés par l'espace, sans cases ni filets verticaux. Un seul filet
+ * horizontal sépare le pied du reste de la carte.
  */
 export function ProfileHero({ profile, onEdit }: ProfileHeroProps) {
   const role = adminRole(profile.typeCompte);
@@ -118,7 +118,7 @@ export function ProfileHero({ profile, onEdit }: ProfileHeroProps) {
               </>
             )}
           </div>
-          <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             {role.description}
           </p>
         </div>
@@ -147,23 +147,15 @@ export function ProfileHero({ profile, onEdit }: ProfileHeroProps) {
         </div>
       </div>
 
-      <div className="relative grid grid-cols-2 border-t border-zinc-100 bg-zinc-50/60 dark:border-zinc-800 dark:bg-zinc-950/30 sm:grid-cols-4">
-        {meta.map((item, index) => (
-          <div
-            key={item.label}
-            className={`px-4 py-3 ${
-              index < 2 ? "border-b border-zinc-100 dark:border-zinc-800 sm:border-b-0" : ""
-            } ${
-              index % 2 === 0 ? "border-r border-zinc-100 dark:border-zinc-800" : ""
-            } ${index === 1 ? "sm:border-r" : ""} ${
-              index === 3 ? "sm:border-r-0" : ""
-            }`}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+      {/* Ligne de faits : un seul filet horizontal, sans séparateurs verticaux. */}
+      <div className="relative flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-zinc-100 px-6 py-3.5 dark:border-zinc-800">
+        {meta.map((item) => (
+          <div key={item.label} className="flex flex-col gap-0.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+              <item.icon className="h-3 w-3 shrink-0 text-zinc-400 dark:text-zinc-500" />
               {item.label}
             </p>
-            <p className="mt-1 flex items-center gap-1.5 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
-              <item.icon className="h-3.5 w-3.5 shrink-0 text-zinc-400 dark:text-zinc-500" />
+            <p className="truncate text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
               {item.value}
             </p>
           </div>
